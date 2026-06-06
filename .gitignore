@@ -1,0 +1,5 @@
+node_modules/
+.env
+Agora backend/.env
+Agora frontend/node_modules/
+Agora backend/node_modules/
