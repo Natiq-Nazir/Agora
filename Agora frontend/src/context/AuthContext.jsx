@@ -6,7 +6,7 @@ import axios from "axios";
 // ─── Axios Global Configuration ───────────────────────────────────────────────
 // Set once here so every axios call across the entire app automatically
 // sends the HTTP-only cookie with each request. Never set this per-call.
-axios.defaults.baseURL = "http://localhost:5173";
+axios.defaults.baseURL = "http://localhost:5173/";
 axios.defaults.withCredentials = true;
 
 // ─── Context Creation ─────────────────────────────────────────────────────────
@@ -48,24 +48,30 @@ export const AuthProvider = ({ children }) => {
   // ── Login ──────────────────────────────────────────────────────────────────
   // Called by Login.jsx after a successful POST /api/auth/login.
   // Receives the user object returned by the backend and stores it globally.
-  const login = (userData) => {
-    setUser(userData); // { id, email, role }
-  };
-
+ const login = (userData) => {
+  setUser(userData); 
+  // Write the key your Home.jsx is aggressively hunting for!
+  localStorage.setItem("agora_token", "true"); 
+};
   // ── Logout ─────────────────────────────────────────────────────────────────
   // Hits the backend to clear the HTTP-only cookie (cannot be done from JS),
   // then wipes local state.
-  const logout = async () => {
-    try {
-      await axios.get("/api/auth/logout");
-    } finally {
-      setUser(null);
-    }
-  };
-
+ const logout = async () => {
+  try {
+    await axios.get("/api/auth/logout");
+  } finally {
+    setUser(null);
+    localStorage.removeItem("agora_token"); // Clear it on sign-out
+  }
+};
   // ── Derived helpers exposed to consumers ───────────────────────────────────
   const isAuthenticated = !!user;
   const isAdmin = user?.role === "admin";
+
+
+
+
+  
 
   return (
     <AuthContext.Provider

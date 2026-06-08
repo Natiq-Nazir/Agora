@@ -826,14 +826,15 @@ const Home = () => {
 
       {/* ══ FAB — viewport-fixed, always accessible ══════════════════════ */}
       <button
-        className={`fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40
-                    flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3
-                    font-bold text-sm rounded-full border-2
-                    transition-all duration-200 active:scale-95 ${t.fab}`}
-      >
-        <Plus className="w-4 h-4 shrink-0" />
-        <span>Report Issue</span>
-      </button>
+  onClick={() => navigate("/report")}
+  className={`fixed bottom-5 right-5 sm:bottom-6 sm:right-6 z-40
+              flex items-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3
+              font-bold text-sm rounded-full border-2
+              transition-all duration-200 active:scale-95 ${t.fab}`}
+>
+  <Plus className="w-4 h-4 shrink-0" />
+  <span>Report Issue</span>
+</button>
     </div>
   );
 };

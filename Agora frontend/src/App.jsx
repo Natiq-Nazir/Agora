@@ -1,37 +1,38 @@
 // src/App.jsx
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Home from "./pages/Home";
+import Login        from "./pages/Login";
+import Register     from "./pages/Register";
+import Home         from "./pages/Home";
 import AdminDashboard from "./pages/AdminDashboard";
+import ReportIssue  from "./pages/ReportIssue";
 
 const App = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          {/* ── Root redirect ────────────────────────────────────────────── */}
+          {/* Root redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />
 
-          {/* ── Public Routes ────────────────────────────────────────────── */}
-          <Route path="/login" element={<Login />} />
+          {/* Public */}
+          <Route path="/login"    element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* ── Protected: Citizens ──────────────────────────────────────── */}
+          {/* Protected: Citizens */}
           <Route element={<ProtectedRoute allowedRoles={["user", "admin"]} />}>
-            <Route path="/home" element={<Home />} />
+            <Route path="/home"   element={<Home />} />
+            <Route path="/report" element={<ReportIssue />} />
           </Route>
 
-          {/* ── Protected: Admins only ───────────────────────────────────── */}
+          {/* Protected: Admins only */}
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
           </Route>
 
-          {/* ── Catch-all fallback ───────────────────────────────────────── */}
+          {/* Catch-all */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </AuthProvider>
