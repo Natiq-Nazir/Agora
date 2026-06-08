@@ -1,254 +1,1199 @@
-// src/pages/AdminDashboard.jsx
-
-import { useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import {
+  SlidersHorizontal, MapPin, Search, X, AlertTriangle,
+  CheckCircle2, Clock, Circle, LogOut, User, Shield, Star,
+  TrendingUp, Sun, Moon, Send, MessageSquare, ChevronDown,
+  ChevronUp, CornerDownRight, Loader2, RefreshCw,
+} from "lucide-react";
+import { Button }     from "@/components/ui/button";
+import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 
-// ── Sidebar navigation items ───────────────────────────────────────────────────
-const NAV_ITEMS = [
+// ─── API Base ─────────────────────────────────────────────────────────────────
+
+const API_BASE = "http://localhost:3000";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const REGIONS       = ["ALL", "srinagar", "pulwama", "kulgam"];
+const STATUS_STAGES = [
+  "Reported", "Acknowledged", "In Progress",
+  "Verification Pending", "Resolved",
+];
+
+const PRIORITY_CONFIG = {
+  Low: {
+    multiplier: 1,
+    color:      "text-emerald-400",
+    colorLight: "text-emerald-700",
+    badge:      "bg-emerald-900/40 border-emerald-700/50",
+    badgeLight: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    dot:        "bg-emerald-400",
+    score:      "text-emerald-400",
+  },
+  High: {
+    multiplier: 2,
+    color:      "text-amber-400",
+    colorLight: "text-amber-700",
+    badge:      "bg-amber-900/40 border-amber-700/50",
+    badgeLight: "bg-amber-50 border-amber-200 text-amber-700",
+    dot:        "bg-amber-400",
+    score:      "text-amber-400",
+  },
+  Critical: {
+    multiplier: 3,
+    color:      "text-red-400",
+    colorLight: "text-red-700",
+    badge:      "bg-red-900/40 border-red-700/50",
+    badgeLight: "bg-red-50 border-red-200 text-red-700",
+    dot:        "bg-red-500",
+    score:      "text-red-400",
+  },
+};
+
+const STATUS_CONFIG = {
+  Reported: {
+    color: "text-zinc-400", colorLight: "text-zinc-500",
+    ring:  "ring-zinc-500", bg: "bg-zinc-800/60", bgLight: "bg-zinc-100",
+    icon:  Circle,
+  },
+  Acknowledged: {
+    color: "text-blue-400", colorLight: "text-blue-600",
+    ring:  "ring-blue-500", bg: "bg-blue-900/40", bgLight: "bg-blue-50",
+    icon:  Clock,
+  },
+  "In Progress": {
+    color: "text-amber-400", colorLight: "text-amber-600",
+    ring:  "ring-amber-500", bg: "bg-amber-900/40", bgLight: "bg-amber-50",
+    icon:  TrendingUp,
+  },
+  "Verification Pending": {
+    color: "text-purple-400", colorLight: "text-purple-600",
+    ring:  "ring-purple-500", bg: "bg-purple-900/40", bgLight: "bg-purple-50",
+    icon:  RefreshCw,
+  },
+  Resolved: {
+    color: "text-emerald-400", colorLight: "text-emerald-600",
+    ring:  "ring-emerald-500", bg: "bg-emerald-900/40", bgLight: "bg-emerald-50",
+    icon:  CheckCircle2,
+  },
+};
+
+// ─── Theme Token Map ──────────────────────────────────────────────────────────
+
+const buildTheme = (dark) => ({
+  page:      dark ? "bg-black text-white"      : "bg-zinc-50 text-zinc-900",
+  sidebar:   dark ? "bg-zinc-950 border-r border-zinc-800/60"
+                  : "bg-white border-r border-zinc-200",
+  sbBorder:  dark ? "border-zinc-800/60"       : "border-zinc-200",
+  sbDivider: dark ? "border-zinc-800/40"       : "border-zinc-100",
+  sbTitle:   dark ? "text-zinc-100"            : "text-zinc-800",
+  sbLabel:   dark ? "text-zinc-500"            : "text-zinc-400",
+  sbItem:    dark ? "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
+                  : "text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100",
+  sbActive:  dark ? "bg-zinc-800/80 text-zinc-100 font-semibold"
+                  : "bg-zinc-100 text-zinc-900 font-semibold",
+  topbar:    dark ? "bg-zinc-950/80 border-b border-zinc-800/60 backdrop-blur-xl"
+                  : "bg-white/80 border-b border-zinc-200 backdrop-blur-xl",
+
+  // Card tokens — mirrors Home.jsx exactly
+  card:      dark ? "rounded-2xl border border-zinc-800/60 bg-zinc-900/80"
+                  : "rounded-2xl border border-zinc-200 bg-white shadow-sm",
+  cardHdr:   dark ? "border-b border-zinc-800/50"  : "border-b border-zinc-100",
+  cardTitle: dark ? "text-base font-bold text-white leading-snug"
+                  : "text-base font-bold text-zinc-900 leading-snug",
+  cardDesc:  dark ? "text-sm text-zinc-400 leading-relaxed"
+                  : "text-sm text-zinc-500 leading-relaxed",
+  imgBox:    dark ? "border-zinc-800/60 bg-zinc-800/40 text-zinc-600"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-300",
+  loc:       dark ? "border-zinc-700/50 bg-zinc-800/50 text-zinc-400"
+                  : "border-zinc-200 bg-zinc-50 text-zinc-500",
+
+  // Glass badge
+  glass:     dark ? "bg-zinc-800/60 border border-zinc-700/40 text-zinc-300 backdrop-blur-sm"
+                  : "bg-white/80 border border-zinc-200 text-zinc-600 backdrop-blur-sm",
+
+  // Inputs
+  input:     dark ? "bg-zinc-900/80 border border-zinc-800/60 text-white placeholder:text-zinc-600"
+                  : "bg-white border border-zinc-200 text-zinc-900 placeholder:text-zinc-400",
+  inputInner:dark ? "bg-transparent text-white placeholder:text-zinc-600"
+                  : "bg-transparent text-zinc-900 placeholder:text-zinc-400",
+
+  // Comment thread
+  commentBg: dark ? "bg-zinc-800/50 border border-zinc-700/40"
+                  : "bg-zinc-50 border border-zinc-200",
+  replyBg:   dark ? "bg-zinc-800/30 border border-zinc-700/30"
+                  : "bg-white border border-zinc-100",
+  adminComment: dark ? "bg-blue-900/20 border border-blue-800/40"
+                     : "bg-blue-50 border border-blue-200",
+
+  // Text utilities
+  title:     dark ? "text-white"   : "text-zinc-900",
+  body:      dark ? "text-zinc-400": "text-zinc-600",
+  muted:     dark ? "text-zinc-500": "text-zinc-400",
+  faint:     dark ? "text-zinc-600": "text-zinc-400",
+  pill:      dark ? "bg-zinc-800/60 border border-zinc-700/40 text-zinc-400"
+                  : "bg-zinc-100 border border-zinc-200 text-zinc-500",
+  divider:   dark ? "border-zinc-800/60"  : "border-zinc-100",
+  scroll:    dark ? "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-zinc-800"
+                  : "scrollbar-thin scrollbar-track-transparent scrollbar-thumb-zinc-300",
+  themeTgl:  dark ? "border-zinc-700 bg-zinc-800/60 text-zinc-300 hover:bg-zinc-700 hover:text-white"
+                  : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
+});
+
+// ─── Mock Data ────────────────────────────────────────────────────────────────
+
+const MOCK_USER = {
+  name: "Dev Administrator", department: "Municipal Engineering",
+  zone: "srinagar", reputationScore: 120,
+  stats: { resolved: 14, inProgress: 5, pending: 3 },
+};
+
+const MOCK_ISSUES = [
   {
-    id: "queue",
-    label: "Issue Queue",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-    ),
+    _id: "mock-001", title: "Pothole cluster on Residency Road",
+    description: "Multiple deep potholes causing traffic hazards near the main junction.",
+    category: "Roads", region: "srinagar", priority: "Critical", baseScore: 10,
+    status: "Reported", reporter: "citizen_442", department: "Roads Dept",
+    locationCode: "34.0837° N, 74.7973° E", imageUrl: null,
+    createdAt: "2024-11-01T08:30:00.000Z",
+    statusHistory: [{ status: "Reported", timestamp: "2024-11-01T08:30:00.000Z" }],
+    comments: [
+      {
+        id: "c1", author: "citizen_442", isAdmin: false,
+        text: "This is really dangerous, please fix urgently!",
+        timestamp: "2024-11-01T09:00:00.000Z", replies: [
+          {
+            id: "c1r1", author: "@municipal.roads", isAdmin: true,
+            text: "We have logged your report and will dispatch a team shortly.",
+            timestamp: "2024-11-01T10:30:00.000Z",
+          },
+        ],
+      },
+    ],
   },
   {
-    id: "map",
-    label: "Geographic View",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-      </svg>
-    ),
+    _id: "mock-002", title: "Burst water main near Lal Chowk",
+    description: "Water logging on main road for 3 days. Pipe burst unattended.",
+    category: "Water Supply", region: "srinagar", priority: "High", baseScore: 10,
+    status: "Acknowledged", reporter: "citizen_118", department: "Water Dept",
+    locationCode: "34.0908° N, 74.8059° E", imageUrl: null,
+    createdAt: "2024-11-02T10:15:00.000Z",
+    statusHistory: [
+      { status: "Reported",     timestamp: "2024-11-02T10:15:00.000Z" },
+      { status: "Acknowledged", timestamp: "2024-11-02T14:00:00.000Z" },
+    ],
+    comments: [],
   },
   {
-    id: "audit",
-    label: "Audit Log",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    ),
+    _id: "mock-003", title: "Street lights out on Pulwama bypass",
+    description: "Entire stretch of bypass road dark at night. Safety concern.",
+    category: "Electricity", region: "pulwama", priority: "High", baseScore: 10,
+    status: "In Progress", reporter: "citizen_231", department: "Power Dept",
+    locationCode: "33.8797° N, 74.8983° E", imageUrl: null,
+    createdAt: "2024-11-03T07:45:00.000Z",
+    statusHistory: [
+      { status: "Reported",     timestamp: "2024-11-03T07:45:00.000Z" },
+      { status: "Acknowledged", timestamp: "2024-11-03T09:00:00.000Z" },
+      { status: "In Progress",  timestamp: "2024-11-03T11:30:00.000Z" },
+    ],
+    comments: [],
   },
   {
-    id: "analytics",
-    label: "Analytics",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-      </svg>
-    ),
+    _id: "mock-004", title: "Garbage collection lapsed — Kulgam ward 4",
+    description: "No collection for 10 days. Waste piling up near school.",
+    category: "Sanitation", region: "kulgam", priority: "Low", baseScore: 10,
+    status: "Verification Pending", reporter: "citizen_089", department: "Sanitation Dept",
+    locationCode: "33.6442° N, 75.0179° E", imageUrl: null,
+    createdAt: "2024-11-04T12:00:00.000Z",
+    statusHistory: [
+      { status: "Reported",              timestamp: "2024-11-04T12:00:00.000Z" },
+      { status: "Acknowledged",          timestamp: "2024-11-04T13:00:00.000Z" },
+      { status: "In Progress",           timestamp: "2024-11-04T15:00:00.000Z" },
+      { status: "Verification Pending",  timestamp: "2024-11-04T17:00:00.000Z" },
+    ],
+    comments: [],
+  },
+  {
+    _id: "mock-005", title: "Bridge railing collapse — Pulwama district",
+    description: "Railing on pedestrian bridge has collapsed. Immediate risk.",
+    category: "Infrastructure", region: "pulwama", priority: "Critical", baseScore: 10,
+    status: "Resolved", reporter: "citizen_774", department: "Infrastructure Dept",
+    locationCode: "33.8712° N, 74.9021° E", imageUrl: null,
+    createdAt: "2024-11-05T06:20:00.000Z",
+    statusHistory: [
+      { status: "Reported",             timestamp: "2024-11-05T06:20:00.000Z" },
+      { status: "Acknowledged",         timestamp: "2024-11-05T07:00:00.000Z" },
+      { status: "In Progress",          timestamp: "2024-11-05T08:00:00.000Z" },
+      { status: "Verification Pending", timestamp: "2024-11-05T10:00:00.000Z" },
+      { status: "Resolved",             timestamp: "2024-11-05T12:00:00.000Z" },
+    ],
+    comments: [],
   },
 ];
 
-// ── Priority badge helper ──────────────────────────────────────────────────────
-const PRIORITY_STYLES = {
-  Critical:    "bg-red-500/10 text-red-400 border-red-500/30",
-  "High Impact": "bg-amber-500/10 text-amber-400 border-amber-500/30",
-  "Low Impact":  "bg-zinc-700/50 text-zinc-400 border-zinc-600",
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const calcPriorityScore = (issue) => {
+  const base       = issue.baseScore ?? 10;
+  const multiplier = PRIORITY_CONFIG[issue.priority]?.multiplier ?? 1;
+  return base * multiplier;
 };
 
-// ── Status badge helper ────────────────────────────────────────────────────────
-const STATUS_STYLES = {
-  Reported:     "bg-zinc-700/50 text-zinc-300",
-  Acknowledged: "bg-blue-500/10 text-blue-400",
-  "In Progress":"bg-amber-500/10 text-amber-400",
-  Resolved:     "bg-emerald-500/10 text-emerald-400",
+const formatTimestamp = (iso) => {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
 };
 
-// ── Admin KPI stats ────────────────────────────────────────────────────────────
-const KPI = [
-  { label: "Pending Review",  value: "0", color: "text-red-400",     border: "border-red-400/20",     bg: "bg-red-400/5" },
-  { label: "Acknowledged",    value: "0", color: "text-blue-400",    border: "border-blue-400/20",    bg: "bg-blue-400/5" },
-  { label: "In Progress",     value: "0", color: "text-amber-400",   border: "border-amber-400/20",   bg: "bg-amber-400/5" },
-  { label: "Resolved Today",  value: "0", color: "text-emerald-400", border: "border-emerald-400/20", bg: "bg-emerald-400/5" },
-];
+const formatShortDate = (iso) => {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+};
 
-const AdminDashboard = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("queue");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+// ─── GlassBadge ──────────────────────────────────────────────────────────────
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/login", { replace: true });
+function GlassBadge({ children, className = "" }) {
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1
+                      rounded-full text-xs font-semibold border ${className}`}>
+      {children}
+    </span>
+  );
+}
+
+// ─── CommentThread ────────────────────────────────────────────────────────────
+
+function CommentThread({ comments, t, dark }) {
+  const [expanded, setExpanded] = useState({});
+
+  const toggleReply = (id) =>
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+
+  if (!comments || comments.length === 0) {
+    return (
+      <p className={`text-xs text-center py-3 ${t.muted}`}>
+        No community comments yet.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {comments.map((comment) => (
+        <div key={comment.id} className="flex flex-col gap-1.5">
+
+          {/* Parent comment */}
+          <div className={`rounded-xl px-3 py-2.5 flex flex-col gap-1
+            ${comment.isAdmin ? t.adminComment : t.commentBg}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className={`text-xs font-bold flex items-center gap-1
+                ${comment.isAdmin
+                  ? dark ? "text-blue-400" : "text-blue-600"
+                  : t.title
+                }`}>
+                {comment.isAdmin && (
+                  <Shield className="w-3 h-3" />
+                )}
+                {comment.author}
+                {comment.isAdmin && (
+                  <GlassBadge className={dark
+                    ? "bg-blue-900/30 border-blue-700/40 text-blue-400 text-[9px] px-1.5 py-0.5"
+                    : "bg-blue-50 border-blue-200 text-blue-600 text-[9px] px-1.5 py-0.5"
+                  }>
+                    Official
+                  </GlassBadge>
+                )}
+              </span>
+              <span className={`text-[10px] shrink-0 ${t.muted}`}>
+                {formatShortDate(comment.timestamp)}
+              </span>
+            </div>
+            <p className={`text-xs leading-relaxed ${t.body}`}>
+              {comment.text}
+            </p>
+
+            {/* Reply toggle */}
+            {comment.replies?.length > 0 && (
+              <button
+                onClick={() => toggleReply(comment.id)}
+                className={`flex items-center gap-1 text-[10px] font-medium
+                            mt-0.5 w-fit transition-colors ${t.muted}`}
+              >
+                <CornerDownRight className="w-3 h-3" />
+                {expanded[comment.id]
+                  ? "Hide replies"
+                  : `${comment.replies.length} repl${comment.replies.length === 1 ? "y" : "ies"}`
+                }
+              </button>
+            )}
+          </div>
+
+          {/* Nested replies */}
+          {expanded[comment.id] && comment.replies?.map((reply) => (
+            <div key={reply.id}
+              className={`ml-4 rounded-xl px-3 py-2 flex flex-col gap-1
+                ${reply.isAdmin ? t.adminComment : t.replyBg}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className={`text-xs font-bold flex items-center gap-1
+                  ${reply.isAdmin
+                    ? dark ? "text-blue-400" : "text-blue-600"
+                    : t.title
+                  }`}>
+                  {reply.isAdmin && <Shield className="w-3 h-3" />}
+                  {reply.author}
+                  {reply.isAdmin && (
+                    <GlassBadge className={dark
+                      ? "bg-blue-900/30 border-blue-700/40 text-blue-400 text-[9px] px-1.5 py-0.5"
+                      : "bg-blue-50 border-blue-200 text-blue-600 text-[9px] px-1.5 py-0.5"
+                    }>
+                      Official
+                    </GlassBadge>
+                  )}
+                </span>
+                <span className={`text-[10px] shrink-0 ${t.muted}`}>
+                  {formatShortDate(reply.timestamp)}
+                </span>
+              </div>
+              <p className={`text-xs leading-relaxed ${t.body}`}>
+                {reply.text}
+              </p>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── VerificationGate ─────────────────────────────────────────────────────────
+// Single-button workflow controller — one visible action per lifecycle stage.
+
+function VerificationGate({ issue, onStatusChange, t, dark }) {
+  const { status, _id } = issue;
+
+  // Reported → Acknowledged
+  if (status === "Reported") {
+    return (
+      <button
+        onClick={() => onStatusChange(_id, "Acknowledged")}
+        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5
+                    rounded-xl text-sm font-semibold border transition-all duration-200
+          ${dark
+            ? "bg-blue-900/30 border-blue-700/50 text-blue-300 hover:bg-blue-800/40 hover:border-blue-600"
+            : "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+          }`}
+      >
+        <span>📋</span>
+        Acknowledge Issue
+      </button>
+    );
+  }
+
+  // Acknowledged → In Progress
+  if (status === "Acknowledged") {
+    return (
+      <button
+        onClick={() => onStatusChange(_id, "In Progress")}
+        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5
+                    rounded-xl text-sm font-semibold border transition-all duration-200
+          ${dark
+            ? "bg-amber-900/30 border-amber-700/50 text-amber-300 hover:bg-amber-800/40 hover:border-amber-600"
+            : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+          }`}
+      >
+        <span>🛠️</span>
+        Start Work (In Progress)
+      </button>
+    );
+  }
+
+  // In Progress → Verification Pending
+  if (status === "In Progress") {
+    return (
+      <button
+        onClick={() => onStatusChange(_id, "Verification Pending")}
+        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5
+                    rounded-xl text-sm font-semibold border transition-all duration-200
+          ${dark
+            ? "bg-purple-900/30 border-purple-700/50 text-purple-300 hover:bg-purple-800/40 hover:border-purple-600"
+            : "bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+          }`}
+      >
+        <span>📤</span>
+        Request Citizen Verification
+      </button>
+    );
+  }
+
+  // Verification Pending → locked / pulsing await state
+  if (status === "Verification Pending") {
+    return (
+      <div className={`w-full flex items-center justify-center gap-2 px-4 py-2.5
+                      rounded-xl text-sm font-semibold border cursor-not-allowed
+                      select-none opacity-80
+        ${dark
+          ? "bg-zinc-800/60 border-zinc-700/40 text-zinc-400"
+          : "bg-zinc-100 border-zinc-200 text-zinc-400"
+        }`}
+      >
+        <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+        <span>⏳ Awaiting Citizen Verification…</span>
+      </div>
+    );
+  }
+
+  // Resolved → closed success banner
+  if (status === "Resolved") {
+    return (
+      <div className={`w-full flex items-center justify-center gap-2 px-4 py-2.5
+                      rounded-xl text-sm font-semibold border cursor-default select-none
+        ${dark
+          ? "bg-emerald-900/20 border-emerald-800/40 text-emerald-400"
+          : "bg-emerald-50 border-emerald-200 text-emerald-700"
+        }`}
+      >
+        <CheckCircle2 className="w-4 h-4 shrink-0" />
+        <span>✅ Issue Resolved &amp; Closed</span>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ─── IssueCard ────────────────────────────────────────────────────────────────
+
+function IssueCard({ issue, onStatusChange, onAddComment, user, t, dark }) {
+  const score       = calcPriorityScore(issue);
+  const priorityCfg = PRIORITY_CONFIG[issue.priority] ?? PRIORITY_CONFIG.Low;
+  const statusCfg   = STATUS_CONFIG[issue.status]    ?? STATUS_CONFIG.Reported;
+  const StatusIcon  = statusCfg.icon;
+
+  const [commentText, setCommentText] = useState("");
+  const [sending,     setSending]     = useState(false);
+  const commentEndRef = useRef(null);
+
+  // Auto-scroll comment thread to bottom on new message
+  useEffect(() => {
+    commentEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [issue.comments?.length]);
+
+  const handleSendComment = async () => {
+    const trimmed = commentText.trim();
+    if (!trimmed) return;
+    setSending(true);
+
+    // Build authoritative admin handle from profile
+    const adminHandle = user?.department
+      ? `@${user.department.toLowerCase().replace(/\s+/g, ".")}`
+      : "@admin";
+
+    const newComment = {
+      id:        `admin-${Date.now()}`,
+      author:    adminHandle,
+      isAdmin:   true,
+      text:      trimmed,
+      timestamp: new Date().toISOString(),
+      replies:   [],
+    };
+
+    await onAddComment(issue._id, newComment);
+    setCommentText("");
+    setSending(false);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendComment();
+    }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
+    <Card className={"w-full min-w-0 overflow-hidden " + t.card}>
 
-      {/* ── Top Bar ───────────────────────────────────────────────────────── */}
-      <header className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-sm sticky top-0 z-20">
-        <div className="h-16 px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {/* Sidebar toggle (mobile) */}
-            <button
-              onClick={() => setSidebarOpen((p) => !p)}
-              className="text-zinc-400 hover:text-white transition lg:hidden"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+      {/* ── Card Header ──────────────────────────────────────────────────── */}
+      <CardHeader className={"px-4 sm:px-5 pt-4 pb-3 " + t.cardHdr}>
+        <div className="flex items-start justify-between gap-3">
 
-            <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-              </svg>
+          {/* Left: avatar + 2-line reporter meta */}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Avatar circle */}
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center
+                            text-sm font-bold shrink-0 text-white
+                            bg-gradient-to-br from-zinc-600 to-zinc-800`}>
+              {issue.reporter?.[0]?.toUpperCase() ?? "C"}
             </div>
-            <span className="font-bold text-white tracking-tight">Agora</span>
-            <span className="hidden sm:inline-flex items-center gap-1.5 ml-1 text-xs font-medium
-                             bg-indigo-500/10 text-indigo-400 border border-indigo-500/20
-                             px-2.5 py-1 rounded-full">
-              Admin Console
+
+            {/* Reporter info stack */}
+            <div className="flex flex-col min-w-0">
+              <span className={`text-sm font-semibold truncate ${t.title}`}>
+                {issue.reporter ?? "Unknown Citizen"}
+              </span>
+              <span className={`text-xs truncate ${t.muted}`}>
+                {issue.department ?? "General"} · {formatShortDate(issue.createdAt)}
+              </span>
+            </div>
+          </div>
+
+          {/* Right: score + priority label + status badge */}
+          <div className="flex flex-col items-end gap-1.5 shrink-0">
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-xl font-black tracking-tight leading-none
+                ${dark ? priorityCfg.score : priorityCfg.colorLight}`}>
+                {score}
+              </span>
+              <span className={`text-[10px] font-bold uppercase tracking-widest
+                ${dark ? priorityCfg.color : priorityCfg.colorLight}`}>
+                {issue.priority}
+              </span>
+            </div>
+
+            {/* Status GlassBadge */}
+            <GlassBadge className={`${t.glass} text-[10px]`}>
+              <StatusIcon className="w-3 h-3" />
+              {issue.status}
+            </GlassBadge>
+          </div>
+        </div>
+      </CardHeader>
+
+      {/* ── Card Content Body ─────────────────────────────────────────────── */}
+      <CardContent className="px-4 sm:px-5 py-4 space-y-4">
+
+        {/* Title + category badge */}
+        <div className="flex flex-col gap-2">
+          <h3 className={t.cardTitle}>{issue.title ?? "Untitled Issue"}</h3>
+          <GlassBadge className={`${t.glass} w-fit`}>
+            {issue.category ?? "General"}
+          </GlassBadge>
+        </div>
+
+        {/* Description */}
+        <p className={t.cardDesc}>
+          {issue.description ?? "No description provided."}
+        </p>
+
+        {/* Photo attachment box */}
+        <div className={`border rounded-lg aspect-video flex items-center
+                        justify-center text-sm font-mono ${t.imgBox}`}>
+          {issue.imageUrl
+            ? (
+              <img
+                src={issue.imageUrl}
+                alt="Issue attachment"
+                className="w-full h-full object-cover rounded-lg"
+              />
+            ) : (
+              <span className="opacity-50">[ photo attachment ]</span>
+            )
+          }
+        </div>
+
+        {/* Location tag */}
+        <div className={`flex items-center gap-2 font-mono text-xs border
+                        rounded-md px-3 py-2 ${t.loc}`}>
+          <MapPin className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-semibold shrink-0">location::</span>
+          <span className="truncate">{issue.locationCode ?? "—"}</span>
+        </div>
+
+        {/* ── Verification Gate ─────────────────────────────────────────── */}
+        <VerificationGate
+          issue={issue}
+          onStatusChange={onStatusChange}
+          t={t}
+          dark={dark}
+        />
+
+        {/* ── Comment Thread ────────────────────────────────────────────── */}
+        <div className="flex flex-col gap-2">
+          <div className={`flex items-center gap-1.5 text-xs font-semibold ${t.muted}`}>
+            <MessageSquare className="w-3.5 h-3.5" />
+            Community Thread
+            <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px]
+                             ${t.pill}`}>
+              {issue.comments?.length ?? 0}
             </span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium text-white">{user?.email}</p>
-              <p className="text-xs text-zinc-500">
-                {user?.jobTitle || "Authority"} · {user?.department || "—"}
-              </p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="text-sm text-zinc-400 hover:text-white border border-zinc-700
-                         hover:border-zinc-500 rounded-lg px-3 py-1.5 transition duration-150"
-            >
-              Sign out
-            </button>
+          {/* Scrollable thread window */}
+          <div className={`max-h-[200px] overflow-y-auto rounded-xl p-2.5 ${t.scroll}
+            ${dark ? "bg-zinc-800/30" : "bg-zinc-50/80"}`}>
+            <CommentThread
+              comments={issue.comments ?? []}
+              t={t}
+              dark={dark}
+            />
+            <div ref={commentEndRef} />
           </div>
         </div>
-      </header>
+      </CardContent>
 
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* ── Sidebar ─────────────────────────────────────────────────────── */}
-        <aside className={`${sidebarOpen ? "w-56" : "w-0 overflow-hidden"}
-                           lg:w-56 border-r border-zinc-800 bg-zinc-900
-                           flex-shrink-0 transition-all duration-200`}>
-          <nav className="p-4 space-y-1 pt-6">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
-                             font-medium transition duration-150
-                             ${activeTab === item.id
-                               ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-                               : "text-zinc-400 hover:text-white hover:bg-zinc-800 border border-transparent"
-                             }`}
-              >
-                {item.icon}
-                {item.label}
-              </button>
-            ))}
-          </nav>
-
-          {/* Admin trust badge in sidebar footer */}
-          <div className="absolute bottom-6 left-4 right-4 lg:w-48">
-            <div className="bg-zinc-800/60 border border-zinc-700 rounded-xl p-3">
-              <p className="text-xs text-zinc-500 mb-1">Trust Score</p>
-              <div className="flex items-end gap-1">
-                <span className="text-xl font-bold text-white">—</span>
-                <span className="text-xs text-zinc-500 mb-0.5">pts</span>
-              </div>
-              <div className="mt-2 h-1.5 bg-zinc-700 rounded-full">
-                <div className="h-1.5 bg-indigo-500 rounded-full w-0" />
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        {/* ── Main Panel ──────────────────────────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
-
-          {/* KPI row */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {KPI.map((k) => (
-              <div key={k.label}
-                   className={`${k.bg} border ${k.border} rounded-xl p-5`}>
-                <p className={`text-3xl font-bold ${k.color}`}>{k.value}</p>
-                <p className="text-zinc-400 text-sm mt-1">{k.label}</p>
-              </div>
-            ))}
+      {/* ── Card Footer: Admin comment input ──────────────────────────────── */}
+      <CardFooter className={`px-4 sm:px-5 pb-4 pt-0`}>
+        <div className={`flex items-center gap-2 w-full rounded-xl border px-3 py-2
+          ${dark
+            ? "bg-zinc-800/50 border-zinc-700/40"
+            : "bg-zinc-50 border-zinc-200"
+          }`}
+        >
+          {/* Admin avatar — mini */}
+          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-600
+                          to-purple-700 flex items-center justify-center
+                          text-white text-[10px] font-bold shrink-0">
+            {user?.name?.[0]?.toUpperCase() ?? "A"}
           </div>
 
-          {/* Tab content */}
-          {activeTab === "queue" && (
-            <section>
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-white">
-                  Priority Issue Queue
-                </h2>
-                <span className="text-xs text-zinc-500 bg-zinc-800 border border-zinc-700
-                                  px-3 py-1.5 rounded-lg">
-                  Sorted by weighted score ↓
-                </span>
-              </div>
+          {/* Text input */}
+          <input
+            type="text"
+            placeholder={`Reply as ${
+              user?.department
+                ? `@${user.department.toLowerCase().replace(/\s+/g, ".")}`
+                : "@admin"
+            }…`}
+            value={commentText}
+            onChange={e => setCommentText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className={`flex-1 text-xs bg-transparent outline-none ${t.inputInner}`}
+          />
 
-              {/* Empty state */}
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12
-                                 bg-zinc-800 rounded-xl mb-4">
-                  <svg className="w-5 h-5 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
-                <p className="text-zinc-500 text-sm">
-                  The issue queue is empty. Reported issues will appear here ranked by community priority score.
-                </p>
-              </div>
-            </section>
-          )}
+          {/* Send button */}
+          <button
+            onClick={handleSendComment}
+            disabled={!commentText.trim() || sending}
+            className={`shrink-0 p-1.5 rounded-lg transition-all duration-150
+              ${commentText.trim() && !sending
+                ? dark
+                  ? "bg-blue-600 text-white hover:bg-blue-500"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+                : dark
+                  ? "bg-zinc-700/50 text-zinc-600 cursor-not-allowed"
+                  : "bg-zinc-200 text-zinc-400 cursor-not-allowed"
+              }`}
+          >
+            {sending
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Send    className="w-3.5 h-3.5" />
+            }
+          </button>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+}
 
-          {activeTab === "map" && (
-            <section>
-              <h2 className="text-lg font-semibold text-white mb-5">Geographic View</h2>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-                <p className="text-zinc-500 text-sm">
-                  Leaflet/OSM map integration will be mounted here.
-                </p>
-              </div>
-            </section>
-          )}
+// ─── Sidebar helpers ──────────────────────────────────────────────────────────
 
-          {activeTab === "audit" && (
-            <section>
-              <h2 className="text-lg font-semibold text-white mb-5">Audit Log</h2>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-                <p className="text-zinc-500 text-sm">
-                  All administrative actions with timestamps will be listed here.
-                </p>
-              </div>
-            </section>
-          )}
+function SidebarFilterButton({ label, count, isActive, onClick, dark, t, colorClass }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-between w-full px-3 py-2 rounded-xl
+                  text-sm transition-all duration-150
+        ${isActive ? t.sbActive : t.sbItem}`}
+    >
+      <span className="flex items-center gap-2 capitalize">
+        {colorClass && (
+          <span className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
+        )}
+        {label}
+      </span>
+      <span className={`text-xs px-2 py-0.5 rounded-full
+        ${isActive
+          ? dark ? "bg-white/10 text-zinc-300" : "bg-zinc-900/10 text-zinc-600"
+          : dark ? "bg-zinc-800 text-zinc-500"  : "bg-zinc-100 text-zinc-400"
+        }`}>
+        {count}
+      </span>
+    </button>
+  );
+}
 
-          {activeTab === "analytics" && (
-            <section>
-              <h2 className="text-lg font-semibold text-white mb-5">Analytics</h2>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-12 text-center">
-                <p className="text-zinc-500 text-sm">
-                  Resolution rate trends, category breakdowns, and SLA metrics will render here.
-                </p>
-              </div>
-            </section>
-          )}
-        </main>
+function SidebarProfileBlock({ user, isMock, t, dark }) {
+  const reputation = user?.reputationScore ?? 0;
+  const tier =
+    reputation >= 200 ? { label: "Elite",    color: "text-purple-400" } :
+    reputation >= 100 ? { label: "Expert",   color: "text-blue-400"   } :
+    reputation >= 50  ? { label: "Active",   color: "text-emerald-400"} :
+                        { label: "Newcomer", color: "text-zinc-400"   };
+
+  return (
+    <div className="flex flex-col gap-3 px-4 py-4">
+      {isMock && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-700/40
+                        bg-amber-900/20 px-3 py-2">
+          <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+          <span className="text-amber-400 text-xs font-medium">Mock mode — backend offline</span>
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-700
+                        flex items-center justify-center text-white text-sm font-bold shrink-0">
+          {user?.name?.[0]?.toUpperCase() ?? "A"}
+        </div>
+        <div className="flex flex-col min-w-0">
+          <span className={`text-sm font-semibold truncate ${t.title}`}>
+            {user?.name ?? "Administrator"}
+          </span>
+          <span className={`text-xs truncate ${t.muted}`}>
+            {user?.department ?? "Municipal Department"}
+          </span>
+        </div>
+      </div>
+      {user?.zone && (
+        <div className={`flex items-center gap-1.5 text-xs rounded-lg px-3 py-1.5 ${t.pill}`}>
+          <MapPin className="w-3 h-3 shrink-0" />
+          <span className="capitalize">{user.zone}</span>
+        </div>
+      )}
+      <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${t.card}`}>
+        <div className="flex items-center gap-2">
+          <Star className={`w-3.5 h-3.5 ${tier.color}`} />
+          <span className={`text-xs font-medium ${t.muted}`}>Rep Score</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`text-sm font-bold ${tier.color}`}>{reputation}</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full border
+            ${dark
+              ? "bg-zinc-800 border-zinc-700 text-zinc-400"
+              : "bg-zinc-100 border-zinc-200 text-zinc-500"
+            }`}>
+            {tier.label}
+          </span>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {[
+          { label: "Done",    value: user?.stats?.resolved   ?? 0, color: "text-emerald-400" },
+          { label: "Active",  value: user?.stats?.inProgress ?? 0, color: "text-amber-400"   },
+          { label: "Pending", value: user?.stats?.pending    ?? 0, color: "text-red-400"     },
+        ].map(({ label, value, color }) => (
+          <div key={label}
+            className={`rounded-xl px-2 py-2 flex flex-col items-center gap-0.5 ${t.card}`}>
+            <span className={`text-base font-bold ${color}`}>{value}</span>
+            <span className={`text-[10px] ${t.muted}`}>{label}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
-};
+}
 
-export default AdminDashboard;
+function MetricsTiles({ issues, t }) {
+  const total    = issues.length;
+  const resolved = issues.filter(i => i.status === "Resolved").length;
+  const critical = issues.filter(i => i.priority === "Critical").length;
+  const avgScore = total
+    ? (issues.reduce((s, i) => s + calcPriorityScore(i), 0) / total).toFixed(1)
+    : "—";
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-5 pt-4 shrink-0">
+      {[
+        { label: "Total",     value: total,    color: t.title            },
+        { label: "Resolved",  value: resolved, color: "text-emerald-400" },
+        { label: "Critical",  value: critical, color: "text-red-400"     },
+        { label: "Avg Score", value: avgScore, color: "text-amber-400"   },
+      ].map(({ label, value, color }) => (
+        <div key={label} className={`rounded-2xl px-4 py-3 flex flex-col gap-0.5 ${t.card}`}>
+          <span className={`text-xl font-bold ${color}`}>{value}</span>
+          <span className={`text-xs ${t.muted}`}>{label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+export default function AdminDashboard() {
+  const navigate = useNavigate();
+  const [dark, setDark] = useState(true);
+  const t = useMemo(() => buildTheme(dark), [dark]);
+
+  const [user,    setUser]    = useState(null);
+  const [issues,  setIssues]  = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isMock,  setIsMock]  = useState(false);
+
+  const [activeRegion, setActiveRegion] = useState("ALL");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [searchQuery,  setSearchQuery]  = useState("");
+
+  // ── Load profile ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem("agora_token");
+    if (token !== "true") {
+      console.warn("[AdminDashboard] Token missing — loading mock profile.");
+      setUser(MOCK_USER);
+      setIsMock(true);
+      if (MOCK_USER.zone && REGIONS.includes(MOCK_USER.zone)) setActiveRegion(MOCK_USER.zone);
+      return;
+    }
+    axios.get(`${API_BASE}/api/auth/profile`, { withCredentials: true })
+      .then(({ data }) => {
+        setUser(data);
+        if (data?.zone && REGIONS.includes(data.zone)) setActiveRegion(data.zone);
+      })
+      .catch((err) => {
+        console.warn("[AdminDashboard] Profile fetch failed — mock fallback.", err?.message);
+        setUser(MOCK_USER);
+        setIsMock(true);
+        if (MOCK_USER.zone && REGIONS.includes(MOCK_USER.zone)) setActiveRegion(MOCK_USER.zone);
+      });
+  }, []);
+
+  // ── Load issues ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    if (isMock) { setIssues(MOCK_ISSUES); setLoading(false); return; }
+    axios.get(`${API_BASE}/api/auth/admin/issues`, { withCredentials: true })
+      .then(({ data }) => setIssues(Array.isArray(data) ? data : []))
+      .catch((err) => {
+        console.warn("[AdminDashboard] Issues fetch failed — mock fallback.", err?.message);
+        setIssues(MOCK_ISSUES);
+        setIsMock(true);
+      })
+      .finally(() => setLoading(false));
+  }, [user, isMock]);
+
+  // ── Status change handler ───────────────────────────────────────────────────
+  const handleStatusChange = (issueId, newStatus) => {
+    const timestamp = new Date().toISOString();
+    const snapshot  = issues.map(i => ({ ...i }));
+
+    setIssues(prev => prev.map(issue => {
+      if (issue._id !== issueId) return issue;
+      return {
+        ...issue, status: newStatus,
+        statusHistory: [
+          ...(issue.statusHistory ?? []),
+          { status: newStatus, timestamp },
+        ],
+      };
+    }));
+
+    if (isMock) {
+      console.info(`[AdminDashboard] Mock status: ${issueId} → ${newStatus}`);
+      return;
+    }
+
+    axios
+      .patch(
+        `${API_BASE}/api/auth/admin/issues/${issueId}/status`,
+        { status: newStatus, timestamp },
+        { withCredentials: true }
+      )
+      .catch((err) => {
+        console.warn("[AdminDashboard] Status PATCH failed — rolling back.", err?.message);
+        setIssues(snapshot);
+      });
+  };
+
+  // ── Comment add handler ─────────────────────────────────────────────────────
+  const handleAddComment = async (issueId, newComment) => {
+    // Optimistic update
+    setIssues(prev => prev.map(issue => {
+      if (issue._id !== issueId) return issue;
+      return {
+        ...issue,
+        comments: [...(issue.comments ?? []), newComment],
+      };
+    }));
+
+    if (isMock) {
+      console.info(`[AdminDashboard] Mock comment added to ${issueId}`);
+      return;
+    }
+
+    try {
+      await axios.post(
+        `${API_BASE}/api/auth/admin/issues/${issueId}/comments`,
+        newComment,
+        { withCredentials: true }
+      );
+    } catch (err) {
+      console.warn("[AdminDashboard] Comment POST failed.", err?.message);
+      // Roll back the optimistic comment on failure
+      setIssues(prev => prev.map(issue => {
+        if (issue._id !== issueId) return issue;
+        return {
+          ...issue,
+          comments: (issue.comments ?? []).filter(c => c.id !== newComment.id),
+        };
+      }));
+    }
+  };
+
+  // ── Filtered + sorted list ──────────────────────────────────────────────────
+  const filteredIssues = useMemo(() => {
+    let list = [...issues];
+    if (activeRegion !== "ALL") list = list.filter(i => i.region === activeRegion);
+    if (statusFilter !== "ALL") list = list.filter(i => i.status === statusFilter);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(i =>
+        i.title?.toLowerCase().includes(q)       ||
+        i.description?.toLowerCase().includes(q) ||
+        i.category?.toLowerCase().includes(q)
+      );
+    }
+    list.sort((a, b) => calcPriorityScore(b) - calcPriorityScore(a));
+    return list;
+  }, [issues, activeRegion, statusFilter, searchQuery]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  return (
+    <div className={`h-screen overflow-hidden transition-colors duration-300 ${t.page}`}>
+      <div className="flex h-full">
+
+        {/* ══════════ SIDEBAR ══════════════════════════════════════════════════ */}
+        <aside className={`hidden lg:flex flex-col shrink-0 w-72 h-full ${t.sidebar}`}>
+
+          {/* Header */}
+          <div className={`flex items-center justify-between
+                          px-5 pt-5 pb-4 border-b shrink-0 ${t.sbBorder}`}>
+            <span className={`text-sm font-bold flex items-center gap-2 ${t.sbTitle}`}>
+              <SlidersHorizontal className="w-4 h-4" />
+              Admin Panel Options
+            </span>
+            {isMock && (
+              <span className="flex items-center gap-1 text-[10px] font-semibold
+                               text-amber-400 px-2 py-0.5 rounded-full
+                               bg-amber-900/20 border border-amber-700/30">
+                <AlertTriangle className="w-3 h-3" /> Mock
+              </span>
+            )}
+          </div>
+
+          {/* Scrollable body */}
+          <div className={`flex-1 overflow-y-auto ${t.scroll}`}>
+
+            <div className={`border-b ${t.sbDivider}`}>
+              <SidebarProfileBlock user={user} isMock={isMock} t={t} dark={dark} />
+            </div>
+
+            {/* Region filters */}
+            <div className={`border-b ${t.sbDivider}`}>
+              <div className="px-5 pt-4 pb-1">
+                <span className={`text-[11px] font-semibold uppercase tracking-widest ${t.sbLabel}`}>
+                  Region
+                </span>
+              </div>
+              <div className="px-3 pb-3 flex flex-col gap-1">
+                {REGIONS.map(region => (
+                  <SidebarFilterButton
+                    key={region}
+                    label={region}
+                    count={region === "ALL"
+                      ? issues.length
+                      : issues.filter(i => i.region === region).length}
+                    isActive={activeRegion === region}
+                    onClick={() => setActiveRegion(region)}
+                    dark={dark} t={t}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Status filters */}
+            <div className={`border-b ${t.sbDivider}`}>
+              <div className="px-5 pt-4 pb-1">
+                <span className={`text-[11px] font-semibold uppercase tracking-widest ${t.sbLabel}`}>
+                  Status
+                </span>
+              </div>
+              <div className="px-3 pb-3 flex flex-col gap-1">
+                {["ALL", ...STATUS_STAGES].map(stage => {
+                  const cfg = STATUS_CONFIG[stage];
+                  return (
+                    <SidebarFilterButton
+                      key={stage}
+                      label={stage}
+                      count={stage === "ALL"
+                        ? issues.length
+                        : issues.filter(i => i.status === stage).length}
+                      isActive={statusFilter === stage}
+                      onClick={() => setStatusFilter(stage)}
+                      dark={dark} t={t}
+                      colorClass={cfg
+                        ? dark
+                          ? cfg.color.replace("text-", "bg-")
+                          : cfg.colorLight.replace("text-", "bg-")
+                        : null
+                      }
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className={`shrink-0 border-t px-4 py-4 ${t.sbBorder}`}>
+            <button
+              onClick={() => { localStorage.removeItem("agora_token"); navigate("/login"); }}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm
+                         transition-all duration-150 text-red-400
+                         hover:bg-red-900/20 border border-transparent hover:border-red-900/40"
+            >
+              <LogOut className="w-4 h-4" /> Sign Out
+            </button>
+          </div>
+        </aside>
+
+        {/* ══════════ MAIN CONTENT STAGE ══════════════════════════════════════ */}
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+          {/* Top nav */}
+          <header className={`shrink-0 h-14 flex items-center justify-between
+                             px-5 border-b ${t.topbar}`}>
+            <div className="flex items-center gap-3">
+              <img
+                src="/img/wed.png"
+                alt="Agora"
+                className="h-8 sm:h-9 w-auto shrink-0 object-contain"
+              />
+              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium
+                ${dark
+                  ? "bg-blue-900/30 border-blue-700/40 text-blue-400"
+                  : "bg-blue-50 border-blue-200 text-blue-600"
+                }`}>
+                Admin Dashboard
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className={`hidden sm:flex items-center gap-2 text-xs
+                              px-3 py-1.5 rounded-full border ${t.pill}`}>
+                <User className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-medium">{user?.name ?? "Admin"}</span>
+              </div>
+
+              <button
+                onClick={() => { localStorage.removeItem("agora_token"); navigate("/login"); }}
+                className="lg:hidden flex items-center gap-1.5 text-xs px-3 py-1.5
+                           rounded-lg border font-medium transition-colors
+                           border-red-800/60 text-red-400 hover:bg-red-900/30"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </button>
+
+              {/* Theme toggle — exact Home.jsx pattern */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setDark(p => !p)}
+                className={`shrink-0 h-9 w-9 rounded-full ${t.themeTgl}`}
+              >
+                {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </Button>
+            </div>
+          </header>
+
+          {/* Metrics tiles */}
+          <MetricsTiles issues={filteredIssues} t={t} />
+
+          {/* Search bar */}
+          <div className="px-5 pt-3 pb-2 shrink-0">
+            <div className={`flex items-center gap-3 rounded-2xl px-4 py-2.5 ${t.input}`}>
+              <Search className={`w-4 h-4 shrink-0 ${t.muted}`} />
+              <input
+                type="text"
+                placeholder="Search by title, description, or category…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent text-sm outline-none"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")}>
+                  <X className={`w-4 h-4 ${t.muted}`} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Feed header */}
+          <div className={`flex items-center justify-between
+                          px-5 py-2 shrink-0 border-b ${t.sbBorder}`}>
+            <span className={`text-sm font-semibold ${t.title}`}>
+              Issue Queue
+              <span className={`ml-2 text-xs font-normal ${t.muted}`}>
+                ({filteredIssues.length}{" "}
+                {filteredIssues.length === 1 ? "issue" : "issues"})
+              </span>
+            </span>
+            <span className={`text-xs ${t.faint}`}>Sorted by priority ↓</span>
+          </div>
+
+          {/* ── Scrollable grid feed ─────────────────────────────────────────── */}
+          <div className={`flex-1 overflow-y-auto ${t.scroll}`}>
+            <div className="px-5 py-5">
+
+              {/* Loading */}
+              {loading && (
+                <div className="flex flex-col items-center justify-center py-24 gap-4">
+                  <div className="w-9 h-9 rounded-full border-2 border-blue-500
+                                  border-t-transparent animate-spin" />
+                  <span className={`text-sm ${t.muted}`}>Loading issue queue…</span>
+                </div>
+              )}
+
+              {/* Empty */}
+              {!loading && filteredIssues.length === 0 && (
+                <div className={`flex flex-col items-center justify-center
+                                py-24 gap-3 rounded-2xl border ${t.card}`}>
+                  <Shield className={`w-10 h-10 ${t.muted}`} />
+                  <span className={`text-sm font-medium ${t.muted}`}>
+                    No issues match the current filters.
+                  </span>
+                  <button
+                    onClick={() => {
+                      setActiveRegion("ALL");
+                      setStatusFilter("ALL");
+                      setSearchQuery("");
+                    }}
+                    className="text-xs text-blue-400 hover:text-blue-300
+                               underline underline-offset-2 transition-colors"
+                  >
+                    Clear all filters
+                  </button>
+                </div>
+              )}
+
+              {/* ── Responsive grid — mirrors Home.jsx exactly ───────────────── */}
+              {!loading && filteredIssues.length > 0 && (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
+                  {filteredIssues.map(issue => (
+                    <IssueCard
+                      key={issue._id}
+                      issue={issue}
+                      onStatusChange={handleStatusChange}
+                      onAddComment={handleAddComment}
+                      user={user}
+                      t={t}
+                      dark={dark}
+                    />
+                  ))}
+                </div>
+              )}
+
+            </div>
+          </div>
+
+        </div>{/* end main content stage */}
+      </div>{/* end flex h-full */}
+    </div>   /* end root shell */
+  );
+}
