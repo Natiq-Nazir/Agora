@@ -27,7 +27,7 @@ const CATEGORIES = [
 ];
 
 // ─── Zone options ─────────────────────────────────────────────────────────────
-const ZONES = ["srinagar", "pulwama", "kulgam"];
+const ZONES = ["Srinagar", "Pulwama", "Budgam","Ganderbal"]; // mirror Home.jsx feed filter options
 
 // ─── Coordinate generator — matches seed format: "DD,MM,SSSS,D" ──────────────
 const generateCoordinates = () => {

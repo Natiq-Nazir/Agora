@@ -116,7 +116,7 @@ const SEED = [
 const CATEGORIES   = ["Roads & Transport", "Water Supply", "Waste Management", "Electricity"];
 const STATUSES     = ["Reported", "Acknowledged", "In Progress", "Resolved"];
 const WARDS        = ["Ward 12 — Central", "Ward 7 — North", "Ward 19 — East"];
-const ZONES        = ["all", "srinagar", "pulwama", "kulgam"]; // "all" first
+const ZONES        = ["all", "Srinagar", "Pulwama", "Budgam","Ganderbal"]; // "all" first
 const SORT_OPTIONS = [{ key: "priority", label: "Priority" }, { key: "recent", label: "Recent" }];
 const FLAG_TIERS   = [
   { key: "low",      label: "Low",      icon: Flag,          ac: "bg-zinc-700 text-white border-zinc-500"  },
