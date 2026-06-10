@@ -4,6 +4,7 @@ import authRouter from "./routes/auth.route.js";
 import dotenv from "dotenv";
 import connectDatabase from "./config/database.js";
 import { authMiddleware } from "./middlewares/auth.middleware.js";
+import issueRouter from "./routes/issue.route.js";
 
 dotenv.config();
 const app = express();
@@ -17,6 +18,8 @@ app.get("/", (req, res) => {
   res.send("Hello World!");
 });
 app.use("/api/auth", authRouter);
+
+app.use("/api/issues", issueRouter);
 
 app.get("/protected", authMiddleware, (req, res) => {
   const user = req.user;
