@@ -1,6 +1,7 @@
 // src/pages/ReportIssue.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   ArrowLeft,
   MapPin,
@@ -132,10 +133,11 @@ const ReportIssue = () => {
   };
 
   // ── Submission handler ────────────────────────────────────────────────────
-  const handleSubmit = (e) => {
+  // ✅ UPDATED: Replaced setTimeout mock with live axios.post to /api/issues
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Basic validation guard
+    // Basic validation guard — unchanged from original
     if (!form.title.trim()) { alert("Please enter an issue title."); return; }
     if (!form.category)     { alert("Please select a category."); return; }
     if (!form.zone)         { alert("Please select a zone."); return; }
@@ -143,13 +145,49 @@ const ReportIssue = () => {
 
     setSubmitting(true);
 
-    // Simulate async network delay before confirmation
-    setTimeout(() => {
-      setSubmitting(false);
-      // TODO: Replace with POST /api/issues axios call
-      alert("Report successfully registered publicly under Priority Score calculation Engine!");
+    try {
+      // ✅ Build payload mapped to Mongoose Issue schema field names.
+      // district: zone.toLowerCase() forces "Srinagar" → "srinagar" so the
+      //           enum validator on the backend accepts the value without error.
+      // urgency:  hardcoded to "Low" as the citizen-facing form does not expose
+      //           urgency selection — the admin pipeline escalates from here.
+      // reporter: NOT sent — assigned server-side from req.user.username via
+      //           authMiddleware so it cannot be spoofed from the client.
+      // priorityScore: NOT sent — computed server-side from urgency by the
+      //                createIssue controller before the document is saved.
+      const payload = {
+        title:        form.title.trim(),
+        description:  form.description.trim(),
+        category:     form.category,
+        district:     form.zone.toLowerCase(),   // ✅ "Srinagar" → "srinagar"
+        locationCode: form.locationCode,
+        urgency:      "Low",                     // default starting urgency
+      };
+
+      // ✅ POST to live backend with session cookie forwarded for auth middleware
+      await axios.post(
+        "http://localhost:3000/api/issues",
+        payload,
+        { withCredentials: true }
+      );
+
+      // ✅ On success: redirect to feed so citizen sees their new post live
       navigate("/home", { replace: true });
-    }, 1200);
+
+    } catch (err) {
+      // Surface the backend validation message if available, else generic fallback
+      const msg =
+        err?.response?.data?.message ??
+        err?.response?.data?.errors?.[0] ??
+        "Submission failed. Please try again.";
+      alert(msg);
+    // Change line 184 to print the raw error object separately so Chrome/Edge can expand it:
+console.log("🔥 ACTUAL BACKEND ERROR DEETS:", err.response?.data?.errors || err.response?.data);
+
+    } finally {
+      // Always re-enable the submit button whether the call succeeded or failed
+      setSubmitting(false);
+    }
   };
 
   return (

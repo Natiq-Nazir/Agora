@@ -22,7 +22,7 @@ const API_BASE = "http://localhost:3000";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// ✅ Updated 4-district municipal scope — Kulgam removed
+// ✅ 4-district municipal scope — Kulgam removed
 const REGIONS = ["ALL", "srinagar", "pulwama", "budgam", "ganderbal"];
 
 const STATUS_STAGES = [
@@ -40,8 +40,17 @@ const PRIORITY_CONFIG = {
     dot:        "bg-emerald-400",
     score:      "text-emerald-400",
   },
-  High: {
+  Medium: {
     multiplier: 2,
+    color:      "text-yellow-400",
+    colorLight: "text-yellow-700",
+    badge:      "bg-yellow-900/40 border-yellow-700/50",
+    badgeLight: "bg-yellow-50 border-yellow-200 text-yellow-700",
+    dot:        "bg-yellow-400",
+    score:      "text-yellow-400",
+  },
+  High: {
+    multiplier: 3,
     color:      "text-amber-400",
     colorLight: "text-amber-700",
     badge:      "bg-amber-900/40 border-amber-700/50",
@@ -50,7 +59,7 @@ const PRIORITY_CONFIG = {
     score:      "text-amber-400",
   },
   Critical: {
-    multiplier: 3,
+    multiplier: 4,
     color:      "text-red-400",
     colorLight: "text-red-700",
     badge:      "bg-red-900/40 border-red-700/50",
@@ -154,106 +163,83 @@ const MOCK_USER = {
   stats: { resolved: 14, inProgress: 5, pending: 3 },
 };
 
-// ✅ Mock issues remapped — kulgam replaced with budgam / ganderbal
 const MOCK_ISSUES = [
   {
     _id: "mock-001", title: "Pothole cluster on Residency Road",
     description: "Multiple deep potholes causing traffic hazards near the main junction.",
-    category: "Roads", region: "srinagar", priority: "Critical", baseScore: 10,
+    category: "Roads",
+    // ✅ Live schema field: district (not region)
+    district: "srinagar", urgency: "Critical", priorityScore: 40,
     status: "Reported", reporter: "citizen_442", department: "Roads Dept",
     locationCode: "34.0837° N, 74.7973° E", imageUrl: null,
     createdAt: "2024-11-01T08:30:00.000Z",
-    statusHistory: [{ status: "Reported", timestamp: "2024-11-01T08:30:00.000Z" }],
     comments: [
       {
-        id: "c1", author: "citizen_442", isAdmin: false,
+        _id: "c1", username: "citizen_442", role: "citizen",
         text: "This is really dangerous, please fix urgently!",
-        timestamp: "2024-11-01T09:00:00.000Z",
-        replies: [
-          {
-            id: "c1r1", author: "@municipal.engineering", isAdmin: true,
-            text: "We have logged your report and will dispatch a team shortly.",
-            timestamp: "2024-11-01T10:30:00.000Z",
-          },
-        ],
+        createdAt: "2024-11-01T09:00:00.000Z",
       },
     ],
   },
   {
     _id: "mock-002", title: "Burst water main near Lal Chowk",
     description: "Water logging on main road for 3 days. Pipe burst unattended.",
-    category: "Water Supply", region: "srinagar", priority: "High", baseScore: 10,
+    category: "Water Supply",
+    district: "srinagar", urgency: "High", priorityScore: 30,
     status: "Acknowledged", reporter: "citizen_118", department: "Water Dept",
     locationCode: "34.0908° N, 74.8059° E", imageUrl: null,
     createdAt: "2024-11-02T10:15:00.000Z",
-    statusHistory: [
-      { status: "Reported",     timestamp: "2024-11-02T10:15:00.000Z" },
-      { status: "Acknowledged", timestamp: "2024-11-02T14:00:00.000Z" },
-    ],
     comments: [],
   },
   {
     _id: "mock-003", title: "Street lights out on Pulwama bypass",
     description: "Entire stretch of bypass road dark at night. Safety concern.",
-    category: "Electricity", region: "pulwama", priority: "High", baseScore: 10,
+    category: "Electricity",
+    district: "pulwama", urgency: "High", priorityScore: 30,
     status: "In Progress", reporter: "citizen_231", department: "Power Dept",
     locationCode: "33.8797° N, 74.8983° E", imageUrl: null,
     createdAt: "2024-11-03T07:45:00.000Z",
-    statusHistory: [
-      { status: "Reported",     timestamp: "2024-11-03T07:45:00.000Z" },
-      { status: "Acknowledged", timestamp: "2024-11-03T09:00:00.000Z" },
-      { status: "In Progress",  timestamp: "2024-11-03T11:30:00.000Z" },
-    ],
     comments: [],
   },
   {
     _id: "mock-004", title: "Garbage collection lapsed — Budgam ward 4",
     description: "No collection for 10 days. Waste piling up near school.",
-    category: "Sanitation", region: "budgam", priority: "Low", baseScore: 10,
+    category: "Sanitation",
+    district: "budgam", urgency: "Low", priorityScore: 10,
     status: "Verification Pending", reporter: "citizen_089", department: "Sanitation Dept",
     locationCode: "33.7361° N, 74.7172° E", imageUrl: null,
     createdAt: "2024-11-04T12:00:00.000Z",
-    statusHistory: [
-      { status: "Reported",             timestamp: "2024-11-04T12:00:00.000Z" },
-      { status: "Acknowledged",         timestamp: "2024-11-04T13:00:00.000Z" },
-      { status: "In Progress",          timestamp: "2024-11-04T15:00:00.000Z" },
-      { status: "Verification Pending", timestamp: "2024-11-04T17:00:00.000Z" },
-    ],
     comments: [],
   },
   {
     _id: "mock-005", title: "Bridge railing collapse — Ganderbal district",
     description: "Railing on pedestrian bridge has collapsed. Immediate risk.",
-    category: "Infrastructure", region: "ganderbal", priority: "Critical", baseScore: 10,
+    category: "Infrastructure",
+    district: "ganderbal", urgency: "Critical", priorityScore: 40,
     status: "Resolved", reporter: "citizen_774", department: "Infrastructure Dept",
     locationCode: "34.2317° N, 74.7742° E", imageUrl: null,
     createdAt: "2024-11-05T06:20:00.000Z",
-    statusHistory: [
-      { status: "Reported",             timestamp: "2024-11-05T06:20:00.000Z" },
-      { status: "Acknowledged",         timestamp: "2024-11-05T07:00:00.000Z" },
-      { status: "In Progress",          timestamp: "2024-11-05T08:00:00.000Z" },
-      { status: "Verification Pending", timestamp: "2024-11-05T10:00:00.000Z" },
-      { status: "Resolved",             timestamp: "2024-11-05T12:00:00.000Z" },
-    ],
     comments: [],
   },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// ✅ Now reads priorityScore directly from the live Issue schema field.
+// Falls back to urgency-based calculation for mock data safety.
+const URGENCY_SCORE_MAP = { Critical: 40, High: 30, Medium: 20, Low: 10 };
+
 const calcPriorityScore = (issue) => {
-  const base       = issue.baseScore ?? 10;
-  const multiplier = PRIORITY_CONFIG[issue.priority]?.multiplier ?? 1;
-  return base * multiplier;
+  if (typeof issue.priorityScore === "number" && issue.priorityScore > 0) {
+    return issue.priorityScore;
+  }
+  return URGENCY_SCORE_MAP[issue.urgency] ?? 10;
 };
 
-const formatTimestamp = (iso) => {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "2-digit", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
-  });
-};
+// ✅ Maps live schema `urgency` field to PRIORITY_CONFIG keys.
+// The live model uses urgency (Low/Medium/High/Critical); config keys match.
+const getUrgencyConfig = (issue) =>
+  PRIORITY_CONFIG[issue.urgency] ?? PRIORITY_CONFIG.Low;
 
 const formatShortDate = (iso) => {
   if (!iso) return "—";
@@ -275,12 +261,10 @@ function GlassBadge({ children, className = "" }) {
 }
 
 // ─── CommentThread ────────────────────────────────────────────────────────────
+// ✅ Updated to read live schema fields: username, role, createdAt
+// (replaces old: author, isAdmin, timestamp, replies)
 
 function CommentThread({ comments, t, dark }) {
-  const [expanded, setExpanded] = useState({});
-  const toggleReply = (id) =>
-    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
-
   if (!comments || comments.length === 0) {
     return (
       <p className={`text-xs text-center py-3 ${t.muted}`}>
@@ -291,66 +275,26 @@ function CommentThread({ comments, t, dark }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {comments.map((comment) => (
-        <div key={comment.id} className="flex flex-col gap-1.5">
+      {comments.map((comment, idx) => {
+        // ✅ Live schema: role === "admin" | "citizen"
+        const isAdmin = comment.role === "admin";
+        // ✅ Live schema uses _id (Mongoose ObjectId); fall back to idx for mock
+        const key = comment._id ?? `comment-${idx}`;
 
-          {/* Parent comment */}
-          <div className={`rounded-xl px-3 py-2.5 flex flex-col gap-1
-            ${comment.isAdmin ? t.adminComment : t.commentBg}`}>
-            <div className="flex items-center justify-between gap-2">
-              <span className={`text-xs font-bold flex items-center gap-1
-                ${comment.isAdmin
-                  ? dark ? "text-blue-400" : "text-blue-600"
-                  : t.title
-                }`}>
-                {comment.isAdmin && <Shield className="w-3 h-3" />}
-                {comment.author}
-                {comment.isAdmin && (
-                  <GlassBadge className={dark
-                    ? "bg-blue-900/30 border-blue-700/40 text-blue-400 text-[9px] px-1.5 py-0.5"
-                    : "bg-blue-50 border-blue-200 text-blue-600 text-[9px] px-1.5 py-0.5"
-                  }>
-                    Official
-                  </GlassBadge>
-                )}
-              </span>
-              <span className={`text-[10px] shrink-0 ${t.muted}`}>
-                {formatShortDate(comment.timestamp)}
-              </span>
-            </div>
-            <p className={`text-xs leading-relaxed ${t.body}`}>{comment.text}</p>
-
-            {/* Reply toggle */}
-            {comment.replies?.length > 0 && (
-              <button
-                onClick={() => toggleReply(comment.id)}
-                className={`flex items-center gap-1 text-[10px] font-medium
-                            mt-0.5 w-fit transition-colors ${t.muted}`}
-              >
-                <CornerDownRight className="w-3 h-3" />
-                {expanded[comment.id]
-                  ? "Hide replies"
-                  : `${comment.replies.length} repl${comment.replies.length === 1 ? "y" : "ies"}`
-                }
-              </button>
-            )}
-          </div>
-
-          {/* Nested replies */}
-          {expanded[comment.id] && comment.replies?.map((reply) => (
-            <div key={reply.id}
-              className={`ml-4 rounded-xl px-3 py-2 flex flex-col gap-1
-                ${reply.isAdmin ? t.adminComment : t.replyBg}`}
-            >
+        return (
+          <div key={key} className="flex flex-col gap-1.5">
+            <div className={`rounded-xl px-3 py-2.5 flex flex-col gap-1
+              ${isAdmin ? t.adminComment : t.commentBg}`}>
               <div className="flex items-center justify-between gap-2">
                 <span className={`text-xs font-bold flex items-center gap-1
-                  ${reply.isAdmin
+                  ${isAdmin
                     ? dark ? "text-blue-400" : "text-blue-600"
                     : t.title
                   }`}>
-                  {reply.isAdmin && <Shield className="w-3 h-3" />}
-                  {reply.author}
-                  {reply.isAdmin && (
+                  {isAdmin && <Shield className="w-3 h-3" />}
+                  {/* ✅ Live field: username */}
+                  {comment.username}
+                  {isAdmin && (
                     <GlassBadge className={dark
                       ? "bg-blue-900/30 border-blue-700/40 text-blue-400 text-[9px] px-1.5 py-0.5"
                       : "bg-blue-50 border-blue-200 text-blue-600 text-[9px] px-1.5 py-0.5"
@@ -360,14 +304,15 @@ function CommentThread({ comments, t, dark }) {
                   )}
                 </span>
                 <span className={`text-[10px] shrink-0 ${t.muted}`}>
-                  {formatShortDate(reply.timestamp)}
+                  {/* ✅ Live field: createdAt (ISO from Mongoose timestamps) */}
+                  {formatShortDate(comment.createdAt)}
                 </span>
               </div>
-              <p className={`text-xs leading-relaxed ${t.body}`}>{reply.text}</p>
+              <p className={`text-xs leading-relaxed ${t.body}`}>{comment.text}</p>
             </div>
-          ))}
-        </div>
-      ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -463,8 +408,9 @@ function VerificationGate({ issue, onStatusChange, t, dark }) {
 
 function IssueCard({ issue, onStatusChange, onAddComment, user, t, dark }) {
   const score       = calcPriorityScore(issue);
-  const priorityCfg = PRIORITY_CONFIG[issue.priority] ?? PRIORITY_CONFIG.Low;
-  const statusCfg   = STATUS_CONFIG[issue.status]     ?? STATUS_CONFIG.Reported;
+  // ✅ Uses urgency field from live schema instead of old priority field
+  const priorityCfg = getUrgencyConfig(issue);
+  const statusCfg   = STATUS_CONFIG[issue.status] ?? STATUS_CONFIG.Reported;
   const StatusIcon  = statusCfg.icon;
 
   const [commentText, setCommentText] = useState("");
@@ -479,21 +425,7 @@ function IssueCard({ issue, onStatusChange, onAddComment, user, t, dark }) {
     const trimmed = commentText.trim();
     if (!trimmed) return;
     setSending(true);
-
-    const adminHandle = user?.department
-      ? `@${user.department.toLowerCase().replace(/\s+/g, ".")}`
-      : "@admin";
-
-    const newComment = {
-      id:        `admin-${Date.now()}`,
-      author:    adminHandle,
-      isAdmin:   true,
-      text:      trimmed,
-      timestamp: new Date().toISOString(),
-      replies:   [],
-    };
-
-    await onAddComment(issue._id, newComment);
+    await onAddComment(issue._id, trimmed);
     setCommentText("");
     setSending(false);
   };
@@ -529,16 +461,17 @@ function IssueCard({ issue, onStatusChange, onAddComment, user, t, dark }) {
             </div>
           </div>
 
-          {/* Right: score + priority label + status badge */}
+          {/* Right: score + urgency label + status badge */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             <div className="flex items-baseline gap-1.5">
               <span className={`text-xl font-black tracking-tight leading-none
                 ${dark ? priorityCfg.score : priorityCfg.colorLight}`}>
                 {score}
               </span>
+              {/* ✅ Reads urgency from live schema */}
               <span className={`text-[10px] font-bold uppercase tracking-widest
                 ${dark ? priorityCfg.color : priorityCfg.colorLight}`}>
-                {issue.priority}
+                {issue.urgency ?? "Low"}
               </span>
             </div>
             <GlassBadge className={`${t.glass} text-[10px]`}>
@@ -587,6 +520,15 @@ function IssueCard({ issue, onStatusChange, onAddComment, user, t, dark }) {
           <span className="font-semibold shrink-0">location::</span>
           <span className="truncate">{issue.locationCode ?? "—"}</span>
         </div>
+
+        {/* ✅ District tag — live schema field (replaces old region field) */}
+        {issue.district && (
+          <div className={`flex items-center gap-1.5 text-xs w-fit
+                          rounded-md px-2.5 py-1 border ${t.pill}`}>
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="capitalize font-medium">{issue.district}</span>
+          </div>
+        )}
 
         {/* Verification gate */}
         <VerificationGate
@@ -767,7 +709,7 @@ function SidebarProfileBlock({ user, isMock, t, dark }) {
 function MetricsTiles({ issues, t }) {
   const total    = issues.length;
   const resolved = issues.filter(i => i.status === "Resolved").length;
-  const critical = issues.filter(i => i.priority === "Critical").length;
+  const critical = issues.filter(i => i.urgency === "Critical").length;
   const avgScore = total
     ? (issues.reduce((s, i) => s + calcPriorityScore(i), 0) / total).toFixed(1)
     : "—";
@@ -794,7 +736,7 @@ function MetricsTiles({ issues, t }) {
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [dark, setDark]         = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);           // ✅ #3 — mobile drawer state
+  const [menuOpen, setMenuOpen] = useState(false);
   const t = useMemo(() => buildTheme(dark), [dark]);
 
   const [user,    setUser]    = useState(null);
@@ -807,7 +749,6 @@ export default function AdminDashboard() {
   const [searchQuery,  setSearchQuery]  = useState("");
 
   // ── Inject webkit scrollbar-hide CSS once on mount ──────────────────────────
-  // ✅ #1 — scoped <style> tag for Chrome / Brave / Edge webkit suppression
   useEffect(() => {
     const styleId = "agora-scrollbar-hide";
     if (!document.getElementById(styleId)) {
@@ -816,9 +757,6 @@ export default function AdminDashboard() {
       el.textContent = scrollbarHideStyle;
       document.head.appendChild(el);
     }
-    return () => {
-      // Leave style in DOM across re-mounts — harmless singleton
-    };
   }, []);
 
   // ── Load profile ────────────────────────────────────────────────────────────
@@ -850,17 +788,24 @@ export default function AdminDashboard() {
   }, []);
 
   // ── Load issues ─────────────────────────────────────────────────────────────
+  // ✅ Endpoint realigned: /api/auth/admin/issues → /api/issues
   useEffect(() => {
     if (!user) return;
     setLoading(true);
+
     if (isMock) {
       setIssues(MOCK_ISSUES);
       setLoading(false);
       return;
     }
+
     axios
-      .get(`${API_BASE}/api/auth/admin/issues`, { withCredentials: true })
-      .then(({ data }) => setIssues(Array.isArray(data) ? data : []))
+      .get(`${API_BASE}/api/issues`, { withCredentials: true })
+      .then(({ data }) => {
+        // ✅ Controller returns { success, count, data: [...] }
+        const list = Array.isArray(data) ? data : (data?.data ?? []);
+        setIssues(list);
+      })
       .catch((err) => {
         console.warn("[AdminDashboard] Issues fetch failed — mock fallback.", err?.message);
         setIssues(MOCK_ISSUES);
@@ -870,19 +815,14 @@ export default function AdminDashboard() {
   }, [user, isMock]);
 
   // ── Status change ───────────────────────────────────────────────────────────
+  // ✅ Endpoint realigned: /api/auth/admin/issues/:id/status → /api/issues/:id/status
   const handleStatusChange = (issueId, newStatus) => {
-    const timestamp = new Date().toISOString();
-    const snapshot  = issues.map(i => ({ ...i }));
+    const snapshot = issues.map(i => ({ ...i }));
 
+    // Optimistic UI update
     setIssues(prev => prev.map(issue => {
       if (issue._id !== issueId) return issue;
-      return {
-        ...issue, status: newStatus,
-        statusHistory: [
-          ...(issue.statusHistory ?? []),
-          { status: newStatus, timestamp },
-        ],
-      };
+      return { ...issue, status: newStatus };
     }));
 
     if (isMock) {
@@ -892,8 +832,10 @@ export default function AdminDashboard() {
 
     axios
       .patch(
-        `${API_BASE}/api/auth/admin/issues/${issueId}/status`,
-        { status: newStatus, timestamp },
+        // ✅ Exact endpoint required: /api/issues/:id/status
+        `${API_BASE}/api/issues/${issueId}/status`,
+        // ✅ Exact payload field required by controller: { status }
+        { status: newStatus },
         { withCredentials: true }
       )
       .catch((err) => {
@@ -903,10 +845,24 @@ export default function AdminDashboard() {
   };
 
   // ── Add comment ─────────────────────────────────────────────────────────────
-  const handleAddComment = async (issueId, newComment) => {
+  // ✅ Endpoint realigned: /api/auth/admin/issues/:id/comments → /api/issues/:id/comments
+  // ✅ Payload aligned: controller expects { text } only — username/role set server-side
+  const handleAddComment = async (issueId, commentText) => {
+    // Optimistic comment — shaped to match live CommentSchema fields
+    const optimisticComment = {
+      _id:       `optimistic-${Date.now()}`,
+      username:  user?.department
+                   ? `@${user.department.toLowerCase().replace(/\s+/g, ".")}`
+                   : "@admin",
+      role:      "admin",
+      text:      commentText,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Append optimistically
     setIssues(prev => prev.map(issue => {
       if (issue._id !== issueId) return issue;
-      return { ...issue, comments: [...(issue.comments ?? []), newComment] };
+      return { ...issue, comments: [...(issue.comments ?? []), optimisticComment] };
     }));
 
     if (isMock) {
@@ -915,28 +871,52 @@ export default function AdminDashboard() {
     }
 
     try {
-      await axios.post(
-        `${API_BASE}/api/auth/admin/issues/${issueId}/comments`,
-        newComment,
+      const { data } = await axios.post(
+        // ✅ Exact endpoint: /api/issues/:id/comments
+        `${API_BASE}/api/issues/${issueId}/comments`,
+        // ✅ Exact payload field required by controller: { text }
+        { text: commentText },
         { withCredentials: true }
       );
-    } catch (err) {
-      console.warn("[AdminDashboard] Comment POST failed.", err?.message);
+
+      // ✅ Swap the optimistic stub with the real saved sub-document from MongoDB
+      // Controller returns { success, data: savedComment }
+      const savedComment = data?.data ?? optimisticComment;
+
       setIssues(prev => prev.map(issue => {
         if (issue._id !== issueId) return issue;
         return {
           ...issue,
-          comments: (issue.comments ?? []).filter(c => c.id !== newComment.id),
+          comments: issue.comments.map(c =>
+            c._id === optimisticComment._id ? savedComment : c
+          ),
+        };
+      }));
+
+    } catch (err) {
+      console.warn("[AdminDashboard] Comment POST failed — removing optimistic stub.", err?.message);
+      // Roll back the optimistic comment on failure
+      setIssues(prev => prev.map(issue => {
+        if (issue._id !== issueId) return issue;
+        return {
+          ...issue,
+          comments: issue.comments.filter(c => c._id !== optimisticComment._id),
         };
       }));
     }
   };
 
   // ── Filtered + sorted list ──────────────────────────────────────────────────
+  // ✅ Filter now reads district field (live schema) instead of old region field
   const filteredIssues = useMemo(() => {
     let list = [...issues];
-    if (activeRegion !== "ALL") list = list.filter(i => i.region === activeRegion);
-    if (statusFilter !== "ALL") list = list.filter(i => i.status === statusFilter);
+
+    if (activeRegion !== "ALL") {
+      list = list.filter(i => i.district === activeRegion);
+    }
+    if (statusFilter !== "ALL") {
+      list = list.filter(i => i.status === statusFilter);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(i =>
@@ -945,6 +925,8 @@ export default function AdminDashboard() {
         i.category?.toLowerCase().includes(q)
       );
     }
+
+    // ✅ Sort by priorityScore from live schema (server-computed)
     list.sort((a, b) => calcPriorityScore(b) - calcPriorityScore(a));
     return list;
   }, [issues, activeRegion, statusFilter, searchQuery]);
@@ -955,8 +937,7 @@ export default function AdminDashboard() {
     <div className={`h-screen overflow-hidden transition-colors duration-300 ${t.page}`}>
       <div className="flex h-full">
 
-        {/* ══════════ MOBILE BACKDROP ══════════════════════════════════════════
-            ✅ #3 — Tap-outside-to-close tinted layer, mobile only              */}
+        {/* ══════════ MOBILE BACKDROP ══════════════════════════════════════════ */}
         {menuOpen && (
           <div
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
@@ -965,8 +946,7 @@ export default function AdminDashboard() {
           />
         )}
 
-        {/* ══════════ SIDEBAR ══════════════════════════════════════════════════
-            ✅ #3 — Static on lg+, slide-out drawer on mobile                   */}
+        {/* ══════════ SIDEBAR ══════════════════════════════════════════════════ */}
         <aside
           className={`
             fixed inset-y-0 left-0 z-50 w-72 h-full
@@ -977,7 +957,6 @@ export default function AdminDashboard() {
             ${t.sidebar}
           `}
         >
-
           {/* Sidebar Header */}
           <div className={`flex items-center justify-between
                           px-5 pt-5 pb-4 border-b shrink-0 ${t.sbBorder}`}>
@@ -1001,11 +980,11 @@ export default function AdminDashboard() {
               <SidebarProfileBlock user={user} isMock={isMock} t={t} dark={dark} />
             </div>
 
-            {/* ✅ Region filters — 4-district scope, Kulgam removed */}
+            {/* Region filters — reads district field from live schema */}
             <div className={`border-b ${t.sbDivider}`}>
               <div className="px-5 pt-4 pb-1">
                 <span className={`text-[11px] font-semibold uppercase tracking-widest ${t.sbLabel}`}>
-                  Region
+                  District
                 </span>
               </div>
               <div className="px-3 pb-3 flex flex-col gap-1">
@@ -1016,12 +995,13 @@ export default function AdminDashboard() {
                     count={
                       region === "ALL"
                         ? issues.length
-                        : issues.filter(i => i.region === region).length
+                        // ✅ Count by district field
+                        : issues.filter(i => i.district === region).length
                     }
                     isActive={activeRegion === region}
                     onClick={() => {
                       setActiveRegion(region);
-                      setMenuOpen(false);   // auto-close drawer on mobile selection
+                      setMenuOpen(false);
                     }}
                     dark={dark}
                     t={t}
@@ -1052,7 +1032,7 @@ export default function AdminDashboard() {
                       isActive={statusFilter === stage}
                       onClick={() => {
                         setStatusFilter(stage);
-                        setMenuOpen(false); // auto-close drawer on mobile selection
+                        setMenuOpen(false);
                       }}
                       dark={dark}
                       t={t}
@@ -1089,15 +1069,12 @@ export default function AdminDashboard() {
         {/* ══════════ MAIN CONTENT STAGE ══════════════════════════════════════ */}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
 
-          {/* ── Top Navigation Bar ────────────────────────────────────────────
-              ✅ #3 — Restructured for mobile: hamburger | logo | theme toggle  */}
+          {/* Top Navigation Bar */}
           <header className={`shrink-0 h-14 flex items-center justify-between
                              px-4 sm:px-5 border-b ${t.topbar}`}>
 
             {/* LEFT: hamburger (mobile) + branding */}
             <div className="flex items-center gap-3">
-
-              {/* ✅ Hamburger — mobile only */}
               <button
                 onClick={() => setMenuOpen(true)}
                 className={`lg:hidden p-2 rounded-lg transition-colors
@@ -1110,14 +1087,12 @@ export default function AdminDashboard() {
                 <Menu className="w-6 h-6" />
               </button>
 
-              {/* Platform logo */}
               <img
                 src="/img/wed.png"
                 alt="Agora"
                 className="h-8 sm:h-9 w-auto shrink-0 object-contain"
               />
 
-              {/* Admin badge — hidden on smallest screens to avoid crunch */}
               <span className={`hidden sm:inline-flex text-xs px-2.5 py-1 rounded-full
                                border font-medium
                 ${dark
@@ -1128,17 +1103,14 @@ export default function AdminDashboard() {
               </span>
             </div>
 
-            {/* RIGHT: user pill (desktop) + theme toggle only */}
+            {/* RIGHT: user pill (desktop) + theme toggle */}
             <div className="flex items-center gap-2">
-
-              {/* User pill — desktop only */}
               <div className={`hidden lg:flex items-center gap-2 text-xs
                               px-3 py-1.5 rounded-full border ${t.pill}`}>
                 <User className="w-3.5 h-3.5 shrink-0" />
                 <span className="font-medium">{user?.name ?? "Admin"}</span>
               </div>
 
-              {/* ✅ Theme toggle — always visible, mobile sign-out REMOVED from header */}
               <Button
                 variant="outline"
                 size="icon"
@@ -1185,14 +1157,11 @@ export default function AdminDashboard() {
             <span className={`text-xs ${t.faint}`}>Sorted by priority ↓</span>
           </div>
 
-          {/* ✅ #1 — Main scrollable feed: both inline style + hide-scrollbar class
-                      inline style  → Firefox + IE/Edge legacy
-                      hide-scrollbar → Chrome / Brave / Edge webkit via injected CSS */}
+          {/* Main scrollable feed */}
           <main
             className="hide-scrollbar flex-1 overflow-y-auto px-4 sm:px-6 py-6"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-
             {/* Loading */}
             {loading && (
               <div className="flex flex-col items-center justify-center py-24 gap-4">
@@ -1224,7 +1193,7 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* ✅ Responsive 2-column grid */}
+            {/* Responsive 2-column grid */}
             {!loading && filteredIssues.length > 0 && (
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-5">
                 {filteredIssues.map(issue => (
@@ -1240,7 +1209,6 @@ export default function AdminDashboard() {
                 ))}
               </div>
             )}
-
           </main>
 
         </div>{/* end main content stage */}

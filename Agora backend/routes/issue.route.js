@@ -4,7 +4,7 @@
 // Every route is protected by authMiddleware — no unauthenticated access.
 
 import express              from "express";
-import { authMiddleware }   from "../middleware/auth.middleware.js";
+import { authMiddleware }   from "../middlewares/auth.middleware.js";
 import {
   createIssue,
   getAllIssues,
