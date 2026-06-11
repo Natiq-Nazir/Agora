@@ -2,6 +2,12 @@ import { connect, Schema, model } from "mongoose";
 
 const userSchema = Schema({
   name: String,
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   email: {
     type: String,
     required: true,

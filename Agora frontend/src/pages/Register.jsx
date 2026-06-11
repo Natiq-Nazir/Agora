@@ -4,17 +4,33 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-// Fields shown only when registering as an admin authority
+// ✅ Fields shown only when registering as an admin authority.
+// "department" and "jobTitle" are now removed from ADMIN_FIELDS because
+// they are rendered as controlled dropdowns below, not via the generic map.
 const ADMIN_FIELDS = [
   { name: "batchNumber", label: "Batch / Badge Number", placeholder: "e.g. IAS-2019-001" },
-  { name: "department",  label: "Department",           placeholder: "e.g. Public Works" },
-  { name: "jobTitle",    label: "Job Title",             placeholder: "e.g. Ward Officer" },
   { name: "district",    label: "District",              placeholder: "e.g. South Delhi" },
   { name: "state",       label: "State",                 placeholder: "e.g. Delhi" },
 ];
 
+// ✅ Restricted dropdown options — exact values required by the database schema
+const DEPARTMENT_OPTIONS = [
+  "Water Supply",
+  "Roads & Transport",
+  "Waste Management",
+  "Electricity",
+];
+
+const JOB_TITLE_OPTIONS = [
+  "Field Officer",
+  "Ward Officer",
+  "Department Head",
+];
+
 const Register = () => {
   const navigate = useNavigate();
+
+  const [username, setUsername] = useState("");
 
   const [formData, setFormData] = useState({
     email: "",
@@ -53,6 +69,7 @@ const Register = () => {
 
     try {
       const payload = {
+        username: username.trim(),
         email:    formData.email,
         password: formData.password,
         role:     formData.role,
@@ -84,6 +101,15 @@ const Register = () => {
                       rounded-lg px-3.5 py-2.5 text-sm
                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
                       transition duration-150`;
+
+  // ✅ Dropdown class — inherits identical dark tokens to inputClass.
+  // Uses appearance-none to suppress the native OS chrome so it looks
+  // seamless with the rest of the form. Color is set explicitly on the
+  // element rather than via placeholder because <select> has no placeholder.
+  const selectClass = `w-full bg-zinc-800 border border-zinc-700 text-white
+                       rounded-lg px-3.5 py-2.5 text-sm appearance-none
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                       transition duration-150 cursor-pointer`;
 
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center px-4 py-12">
@@ -153,6 +179,19 @@ const Register = () => {
               </div>
             </div>
 
+            {/* User Handle */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-zinc-300">User Handle</label>
+              <input
+                type="text"
+                placeholder="e.g. musa"
+                value={username}
+                onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                className="w-full px-4 py-3 bg-zinc-900 border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:border-violet-500 transition-colors"
+                required
+              />
+            </div>
+
             {/* Email */}
             <div className="space-y-1.5">
               <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
@@ -201,6 +240,8 @@ const Register = () => {
                 <p className="text-xs text-zinc-500 pt-1">
                   Authority credentials — visible on your public trust profile
                 </p>
+
+                {/* Batch Number, District, State — still rendered via generic map */}
                 {ADMIN_FIELDS.map((field) => (
                   <div key={field.name} className="space-y-1.5">
                     <label htmlFor={field.name} className="block text-sm font-medium text-zinc-300">
@@ -217,6 +258,77 @@ const Register = () => {
                     />
                   </div>
                 ))}
+
+                {/* ✅ Department — swapped from free-text input to restricted dropdown */}
+                <div className="space-y-1.5">
+                  <label htmlFor="department" className="block text-sm font-medium text-zinc-300">
+                    Department
+                  </label>
+                  {/* Wrapper provides the custom chevron icon since appearance-none
+                      strips the native OS arrow from the select element */}
+                  <div className="relative">
+                    <select
+                      id="department"
+                      name="department"
+                      value={formData.department}
+                      onChange={handleChange}
+                      className={selectClass}
+                    >
+                      <option value="" disabled className="bg-zinc-800 text-zinc-500">
+                        Select department…
+                      </option>
+                      {DEPARTMENT_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt} className="bg-zinc-800 text-white">
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Custom dropdown chevron — matches zinc palette */}
+                    <div className="pointer-events-none absolute inset-y-0 right-3
+                                    flex items-center">
+                      <svg className="w-4 h-4 text-zinc-500" fill="none"
+                           stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round"
+                              strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ✅ Job Title — swapped from free-text input to restricted dropdown */}
+                <div className="space-y-1.5">
+                  <label htmlFor="jobTitle" className="block text-sm font-medium text-zinc-300">
+                    Job Title
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="jobTitle"
+                      name="jobTitle"
+                      value={formData.jobTitle}
+                      onChange={handleChange}
+                      className={selectClass}
+                    >
+                      <option value="" disabled className="bg-zinc-800 text-zinc-500">
+                        Select job title…
+                      </option>
+                      {JOB_TITLE_OPTIONS.map((opt) => (
+                        <option key={opt} value={opt} className="bg-zinc-800 text-white">
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    {/* Custom dropdown chevron — matches zinc palette */}
+                    <div className="pointer-events-none absolute inset-y-0 right-3
+                                    flex items-center">
+                      <svg className="w-4 h-4 text-zinc-500" fill="none"
+                           stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round"
+                              strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             )}
 

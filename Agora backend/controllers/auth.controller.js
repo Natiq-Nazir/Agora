@@ -4,9 +4,12 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 // ─── REGISTER ───────────────────────────────────────────────────────────────
 
+
 export const registerUserController = async (req, res) => {
   try {
-    const { email, password, role, batchNumber, district, state, department, jobTitle } = req.body;
+    const { email, username, password, role, batchNumber, district, state, department, jobTitle } = req.body;
+
+const formattedUsername = username.startsWith('@') ? username.toLowerCase() : `@${username.toLowerCase()}`;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -19,6 +22,7 @@ export const registerUserController = async (req, res) => {
     const newUser = await User.create({
       email,
       password: hashedPassword,
+      username: formattedUsername,
       role: role || "user",
       batchNumber,
       district,
@@ -83,16 +87,20 @@ export const loginUserController = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
     });
 
-    // 5. Send role back to frontend explicitly so React state can route accordingly
-    return res.status(200).json({
-      success: true,
-      message: "Login successful.",
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,        // frontend reads this to decide which dashboard to render
-      },
-    });
+// ── 5. Send role back to frontend explicitly so React state can route accordingly ──
+return res.status(200).json({
+  success: true,
+  message: "Login successful.",
+  user: {
+    id: user._id,
+    email: user.email,
+    role: user.role,
+    
+    // 🔥 ADD THESE TWO LINES HERE:
+    username: user.username,
+    department: user.department
+  },
+});
 
   } catch (error) {
     return res.status(500).json({ success: false, message: "Server error during login.", error: error.message });

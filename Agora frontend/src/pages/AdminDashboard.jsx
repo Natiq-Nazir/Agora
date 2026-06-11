@@ -662,8 +662,10 @@ function SidebarProfileBlock({ user, isMock, t, dark }) {
           <span className={`text-sm font-semibold truncate ${t.title}`}>
             {user?.name ?? "Administrator"}
           </span>
+          {/* ✅ CHANGE 2 — subtitle now reads logged-in admin's registered department,
+              falling back to "Municipal Department" only when no department is set. */}
           <span className={`text-xs truncate ${t.muted}`}>
-            {user?.department ?? "Municipal Department"}
+            {user?.department || "Municipal Department"}
           </span>
         </div>
       </div>
@@ -676,7 +678,8 @@ function SidebarProfileBlock({ user, isMock, t, dark }) {
       <div className={`flex items-center justify-between rounded-xl px-3 py-2.5 ${t.card}`}>
         <div className="flex items-center gap-2">
           <Star className={`w-3.5 h-3.5 ${tier.color}`} />
-          <span className={`text-xs font-medium ${t.muted}`}>Rep Score</span>
+          {/* ✅ CHANGE 3 — label renamed from "Rep Score" → "Social Score" */}
+          <span className={`text-xs font-medium ${t.muted}`}>Social Score</span>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-sm font-bold ${tier.color}`}>{reputation}</span>
@@ -734,6 +737,7 @@ function MetricsTiles({ issues, t }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
+  
   const navigate = useNavigate();
   const [dark, setDark]         = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -1108,7 +1112,10 @@ export default function AdminDashboard() {
               <div className={`hidden lg:flex items-center gap-2 text-xs
                               px-3 py-1.5 rounded-full border ${t.pill}`}>
                 <User className="w-3.5 h-3.5 shrink-0" />
-                <span className="font-medium">{user?.name ?? "Admin"}</span>
+                {/* ✅ CHANGE 1 — top-right profile pill now shows logged-in admin's
+                    custom username from the live profile fetch, falling back to
+                    "Admin" if no profile is loaded or no username is registered. */}
+                <span className="font-medium">{user?.username || "Admin"}</span>
               </div>
 
               <Button

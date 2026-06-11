@@ -64,8 +64,11 @@ const IssueSchema = new mongoose.Schema(
       type:     String,
       required: [true, "Issue category is required."],
       trim:     true,
-      // Open string — category list managed on the frontend
-      // (Roads, Water Supply, Electricity, Sanitation, Infrastructure, etc.)
+      // Locked down to match our four primary frontend department buttons!
+      enum: {
+        values: ["Water Supply", "Roads & Transport", "Waste Management", "Electricity"],
+        message: "Category must be one of: Water Supply, Roads & Transport, Waste Management, or Electricity."
+      }
     },
 
     locationCode: {
@@ -123,12 +126,17 @@ const IssueSchema = new mongoose.Schema(
       // Kept as a string reference (not ObjectId) for v1 simplicity.
     },
 
+    // ── Restricted Official Routing ─────────────────────────────────────────
+
     department: {
       type:    String,
       trim:    true,
       default: null,
-      // Assigned by admin after acknowledgement,
-      // e.g. "Roads Dept", "Water Dept", "Power Dept".
+      // 🔥 Hardcoded enum match: Ensures issues map cleanly to registered official sectors
+      enum: {
+        values: ["Water Supply", "Roads & Transport", "Waste Management", "Electricity", null],
+        message: "Department must be one of: Water Supply, Roads & Transport, Waste Management, or Electricity."
+      }
     },
 
     // ── Status Lifecycle ────────────────────────────────────────────────────
@@ -172,14 +180,11 @@ const IssueSchema = new mongoose.Schema(
 
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 // Optimise the most common admin dashboard query patterns:
-// filter by district, filter by status, sort by priorityScore descending.
-
 IssueSchema.index({ district: 1 });
 IssueSchema.index({ status:   1 });
 IssueSchema.index({ priorityScore: -1 });
 
 // Compound index for the most frequent combined dashboard query:
-// "show me all Reported issues in srinagar, sorted by score"
 IssueSchema.index({ district: 1, status: 1, priorityScore: -1 });
 
 // ─── Model Export ─────────────────────────────────────────────────────────────
