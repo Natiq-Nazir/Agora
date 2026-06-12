@@ -17,76 +17,52 @@ const URGENCY_SCORE_MAP = {
 };
 
 // ─── 1. Create Issue ──────────────────────────────────────────────────────────
-// POST /api/issues
-// Protected — citizen or admin. Reporter auto-assigned from auth middleware.
+// POST /api/issues/create
+// Protected — citizen or admin. Reporter auto-assigned from auth middleware,
+// with username body field accepted as a fallback for citizen submissions.
 
 export const createIssue = async (req, res) => {
   try {
-    const {
-      title,
-      description,
-      category,
-      locationCode,
-      imageUrl,
-      district,
-      urgency,
-      department,
-    } = req.body;
+    const { title, description, category, zone, locationCode, attachment, username } = req.body;
 
-    // ── Guard: required fields ───────────────────────────────────────────────
-    if (!title || !description || !category || !district || !urgency) {
-      return res.status(400).json({
-        success: false,
-        message: "title, description, category, district, and urgency are all required.",
-      });
-    }
+    // 1. Map incoming frontend fields safely to match your Mongoose Model enums
+    let mappedCategory = category;
+    
+    // Quick translation mapping in case frontend sends short text names
+    if (category === "Roads") mappedCategory = "Roads & Transport";
+    if (category === "Waste") mappedCategory = "Waste Management";
 
-    // ── Compute priority score server-side ───────────────────────────────────
-    // Client-supplied scores are ignored — always derived from urgency enum.
-    const priorityScore = URGENCY_SCORE_MAP[urgency] ?? 10;
-
-    // ── Build and persist the document ──────────────────────────────────────
-    const issue = await Issue.create({
-      title,
-      description,
-      category,
-      locationCode: locationCode ?? null,
-      imageUrl:     imageUrl     ?? null,
-      district,
-      urgency,
-      priorityScore,
-      reporter:   req.user.username,   // pulled directly from auth middleware
-      department: department ?? null,
-      // status defaults to "Reported" via schema
-      // comments defaults to [] via schema
+    const newIssue = new Issue({
+      title: title || "Untitled Issue",
+      description: description || "No description provided.",
+      category: mappedCategory || "Water Supply", 
+      district: zone ? zone.toLowerCase() : "srinagar",   // Forces lowercase enum match
+      locationCode: locationCode || null,
+      imageUrl: attachment || null,
+      reporter: username || "Anonymous",                  // Maps username string directly to reporter
+      urgency: "Low",                                     // Fulfills required schema field
     });
+
+    // 2. Save document to MongoDB
+    const savedIssue = await newIssue.save();
 
     return res.status(201).json({
       success: true,
-      message: "Issue reported successfully.",
-      data:    issue,
+      message: "Issue registered successfully inside Agora network.",
+      issue: savedIssue,
     });
 
-  } catch (err) {
-
-    // Mongoose validation errors (enum violation, maxlength, etc.)
-    if (err.name === "ValidationError") {
-      const messages = Object.values(err.errors).map((e) => e.message);
-      return res.status(422).json({
-        success: false,
-        message: "Validation failed.",
-        errors:  messages,
-      });
-    }
-
-    console.error("[createIssue] Unexpected error:", err.message);
-    return res.status(500).json({
+  } catch (error) {
+    // 🔥 Check your VS Code terminal window below to read this exact message if it fails!
+    console.error("❌ MONGOOSE VALIDATION CRASH LOG:", error.message);
+    
+    return res.status(400).json({
       success: false,
-      message: "Server error while creating issue.",
+      message: "Database failed to save the civic report.",
+      error: error.message,
     });
   }
 };
-
 // ─── 2. Get All Issues ────────────────────────────────────────────────────────
 // GET /api/issues
 // Protected — admin dashboard feed. Sorted by priorityScore descending

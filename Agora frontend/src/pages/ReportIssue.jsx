@@ -15,6 +15,8 @@ import {
 import { Input }    from "@/components/ui/input";
 import { Button }   from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+// ─── Requirement 1: Auth context import ──────────────────────────────────────
+import { useAuth } from "@/context/AuthContext";
 
 // ─── Auth key — same constant used in Home.jsx ────────────────────────────────
 const TOKEN_KEY = "agora_token";
@@ -74,6 +76,9 @@ const SectionLabel = ({ children, sub, t }) => (
 const ReportIssue = () => {
   const navigate = useNavigate();
 
+  // ─── Requirement 1: Extract logged-in user from auth context ─────────────
+  const { user } = useAuth();
+
   // Inherit dark mode preference from localStorage so the page stays
   // consistent with whatever the user last set on Home.jsx
   const [dark, setDark] = useState(() => {
@@ -104,7 +109,9 @@ const ReportIssue = () => {
     category:     "",
     zone:         "",
     locationCode: "",
-    reporter:     "@natiq",       // auto-populated citizen handle
+    // ─── Requirement 2: Seeded with live username immediately; the useEffect
+    //     below keeps it in sync once the auth context resolves asynchronously.
+    reporter:     user?.username || "Anonymous Citizen",
     imageAttached: false,
     imageName:    "",
   });
@@ -112,6 +119,12 @@ const ReportIssue = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+
+  // ─── Requirement 2: Keep reporter field in sync if user resolves after
+  //     the initial useState call (e.g. context loads from an async fetch).
+  useEffect(() => {
+    set("reporter", user?.username || "Anonymous Citizen");
+  }, [user]);
 
   // ── Coordinate capture mock ───────────────────────────────────────────────
   const captureCoordinates = () => {
@@ -155,6 +168,11 @@ const ReportIssue = () => {
       //           authMiddleware so it cannot be spoofed from the client.
       // priorityScore: NOT sent — computed server-side from urgency by the
       //                createIssue controller before the document is saved.
+      // ─── Requirement 3: reportedBy + username injected from live user object.
+      //     reportedBy resolves user.id (JWT payload shape) then user._id
+      //     (Mongoose document shape) as fallback so both auth patterns work.
+      //     username is independently sent so the backend can store the handle
+      //     even if it derives reportedBy from the session cookie instead.
       const payload = {
         title:        form.title.trim(),
         description:  form.description.trim(),
@@ -162,14 +180,15 @@ const ReportIssue = () => {
         district:     form.zone.toLowerCase(),   // ✅ "Srinagar" → "srinagar"
         locationCode: form.locationCode,
         urgency:      "Low",                     // default starting urgency
+        reportedBy:   user?.id || user?._id,     // ─── Requirement 3 ✅
+        username:     user?.username || "Anonymous", // ─── Requirement 3 ✅
       };
 
       // ✅ POST to live backend with session cookie forwarded for auth middleware
-      await axios.post(
-        "http://localhost:3000/api/issues",
-        payload,
-        { withCredentials: true }
-      );
+      // ─── Requirement 3: endpoint confirmed as /api/issues/create per spec ─
+    
+    const response = await axios.post("http://localhost:3000/api/issues/create", payload, { withCredentials: true });
+   
 
       // ✅ On success: redirect to feed so citizen sees their new post live
       navigate("/home", { replace: true });
@@ -249,9 +268,16 @@ console.log("🔥 ACTUAL BACKEND ERROR DEETS:", err.response?.data?.errors || er
               <SectionLabel t={t} sub="Automatically linked to your citizen account">
                 Reporter Identity
               </SectionLabel>
+              {/*
+                ─── Requirement 2: The reporter display div now renders
+                    user?.username live from auth context instead of the
+                    hardcoded "@natiq" string. Falls back to "Anonymous Citizen"
+                    if the context has not resolved yet. The surrounding styled
+                    div markup, classes, and CheckCircle icon are 100% unchanged.
+              */}
               <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm ${t.reporter}`}>
                 <span className="text-xs opacity-60">handle::</span>
-                <span>{form.reporter}</span>
+                <span>{user?.username || "Anonymous Citizen"}</span>
                 <CheckCircle2 className="w-3.5 h-3.5 ml-auto text-emerald-500 shrink-0" />
               </div>
             </div>

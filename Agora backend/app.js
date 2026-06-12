@@ -9,6 +9,7 @@ import cors from "cors";
 
 dotenv.config();
 const app = express();
+app.set("strict routing", false);
 app.use(json());
 app.use(urlencoded({ extended: true }));
 app.use(cookieParser());

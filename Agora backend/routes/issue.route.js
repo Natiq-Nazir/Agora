@@ -28,10 +28,11 @@ const router = express.Router();
 // Create a new civic issue report
 // Citizen or admin — reporter auto-assigned from auth token
 router.post(
-  "/",
+  "/create",
   authMiddleware,
   createIssue
 );
+
 
 // Fetch all issues sorted by priority score descending
 // Powers the admin dashboard issue queue
