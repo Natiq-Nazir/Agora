@@ -136,7 +136,7 @@ const FLAG_TIERS = [
 ];
 
 const NAV_ITEMS = [
-  { label: "login / profile", icon: User,          href: "#profile"  },
+  { label: "login / profile", icon: User,          href: "/profile"  },
   { label: "about us",        icon: Info,          href: "#about"    },
   { label: "contact us",      icon: MessageSquare, href: "#contact"  },
   { label: "feed back",       icon: ArrowUpCircle, href: "#feedback" },
@@ -236,12 +236,16 @@ const FilterSection = ({ title, items, active, onToggle, t }) => (
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // SidebarContent
+// ─── Requirement 2: accepts `onNavigate` prop so the "login / profile" item
+//     can call navigate("/profile") via React Router instead of an href anchor.
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const SidebarContent = ({
   showClose, onClose, onLogout,
   activeCategories, onToggleCategory,
   activeStatuses,   onToggleStatus,
   activeFilterCount, t,
+  // ── Requirement 2: navigate callback threaded in from Home ────────────────
+  onNavigate,
 }) => (
   <div className="flex flex-col h-full">
     <div className={`flex items-center justify-between px-5 pt-5 pb-4 border-b shrink-0 ${t.sbBorder}`}>
@@ -280,16 +284,34 @@ const SidebarContent = ({
 
       <div className="space-y-1">
         <p className={`text-xs font-bold uppercase tracking-[0.2em] mb-3 ${t.sbNavHdr}`}>Navigation</p>
-        {NAV_ITEMS.map(({ label, icon: Icon, href }) => (
-          <a
-            key={label}
-            href={href}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${t.sbLink}`}
-          >
-            <Icon className={`w-4 h-4 shrink-0 ${t.sbIcon}`} />
-            {label}
-          </a>
-        ))}
+        {NAV_ITEMS.map(({ label, icon: Icon, href }) => {
+          // ── Requirement 2: "login / profile" is wired to React Router
+          //    navigate("/profile"). All other nav items keep their original
+          //    <a href="..."> anchor behaviour — zero other items are touched.
+          const isProfileLink = label === "login / profile";
+
+          return isProfileLink ? (
+            <button
+              key={label}
+              onClick={() => onNavigate("/profile")}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
+                          font-medium transition-colors duration-150 w-full
+                          text-left ${t.sbLink}`}
+            >
+              <Icon className={`w-4 h-4 shrink-0 ${t.sbIcon}`} />
+              {label}
+            </button>
+          ) : (
+            <a
+              key={label}
+              href={href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${t.sbLink}`}
+            >
+              <Icon className={`w-4 h-4 shrink-0 ${t.sbIcon}`} />
+              {label}
+            </a>
+          );
+        })}
 
         <div className="pt-2">
           <button
@@ -607,8 +629,6 @@ const Home = () => {
   };
 
   // ✅ Add citizen comment — optimistic + POST to /api/issues/:id/comments
-  // NOTE: The current backend forces role:"admin". A separate citizen comment
-  //       endpoint is needed for full persistence. Optimistic UI works either way.
   const handleAddComment = async (issueId, text) => {
     const optimisticComment = {
       _id:       `opt-${Date.now()}`,
@@ -629,7 +649,6 @@ const Home = () => {
         { text },
         { withCredentials: true }
       );
-      // Swap optimistic stub with server-saved version if available
       const saved = data?.data ?? optimisticComment;
       setIssues((p) => p.map((i) =>
         i._id !== issueId ? i : {
@@ -667,10 +686,12 @@ const Home = () => {
 
   const filterCount = cats.length + stats.length;
 
+  // ── Requirement 2: pass navigate down into SidebarContent as onNavigate ──
   const sidebarProps = {
-    onLogout: handleLogout,
-    activeCategories: cats, onToggleCategory: toggler(setCats),
-    activeStatuses:  stats, onToggleStatus:   toggler(setStats),
+    onLogout:          handleLogout,
+    onNavigate:        navigate,            // ← threaded in here
+    activeCategories:  cats,   onToggleCategory: toggler(setCats),
+    activeStatuses:    stats,  onToggleStatus:   toggler(setStats),
     activeFilterCount: filterCount, t,
   };
 
